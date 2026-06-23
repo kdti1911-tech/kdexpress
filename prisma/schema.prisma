@@ -1,0 +1,550 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+  DRIVER
+  AGENT
+  AGENT_VN
+  CLIENT
+}
+
+enum ShipmentStatus {
+  PENDING
+  CONFIRMED
+  PICKED_UP
+  IN_TRANSIT
+  ARRIVED_ORIGIN
+  CUSTOMS_CLEARANCE
+  ARRIVED_DESTINATION
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURNED
+  LOST
+}
+
+enum ShipmentType {
+  DOCUMENT
+  PARCEL
+  FREIGHT
+  PALLET
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum RateType {
+  PER_KG
+  FLAT
+  PER_UNIT
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  CHECKBOX
+  TEXTAREA
+  FILE
+  FORMULA
+}
+
+enum InsuranceType {
+  PERCENTAGE
+  FLAT
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ─── USERS & AUTH ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  phone         String?
+  passwordHash  String
+  role          UserRole  @default(CLIENT)
+  userCode      String?   @unique @map("user_code")
+  markup        Float     @default(0)
+  isActive      Boolean   @default(true) @map("is_active")
+  branchId      String?   @map("branch_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+
+  branch          Branch?          @relation(fields: [branchId], references: [id])
+  sessions        Session[]
+  shipmentsSender Shipment[]       @relation("ShipmentSender")
+  userGroups      UserGroupMember[]
+  addressBook     AddressBook[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ─── BRANCHES ────────────────────────────────────────────────────────────────
+
+model Branch {
+  id          String  @id @default(cuid())
+  name        String
+  code        String  @unique
+  phone       String?
+  email       String?
+  address1    String? @map("address_1")
+  address2    String? @map("address_2")
+  city        String?
+  province    String?
+  postcode    String?
+  country     String  @default("CA")
+  prefix      String?
+  suffix      String?
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  shipmentsOrigin    Shipment[] @relation("ShipmentOriginBranch")
+  shipmentsDestination Shipment[] @relation("ShipmentDestBranch")
+
+  @@map("branches")
+}
+
+// ─── LOCATIONS & RATE ZONES ──────────────────────────────────────────────────
+
+model Location {
+  id    String @id @default(cuid())
+  name  String
+  slug  String @unique
+
+  zonesAsOrigin      RateZone[]  @relation("ZoneOrigin")
+  zonesAsDestination ZoneDestination[]
+
+  @@map("locations")
+}
+
+model RateZone {
+  id          String @id @default(cuid())
+  label       String
+  originId    String @map("origin_id")
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  origin       Location          @relation("ZoneOrigin", fields: [originId], references: [id])
+  destinations ZoneDestination[]
+  rates        Rate[]
+
+  @@map("rate_zones")
+}
+
+model ZoneDestination {
+  zoneId     String @map("zone_id")
+  locationId String @map("location_id")
+
+  zone     RateZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@id([zoneId, locationId])
+  @@map("zone_destinations")
+}
+
+model DeliveryType {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  rates Rate[]
+
+  @@map("delivery_types")
+}
+
+model Rate {
+  id             String   @id @default(cuid())
+  zoneId         String   @map("zone_id")
+  deliveryTypeId String   @map("delivery_type_id")
+  brand          String?
+  service        String?
+  rateType       RateType @default(PER_KG) @map("rate_type")
+  weightCost     Float    @default(0) @map("weight_cost")
+  minWeight      Float    @default(0) @map("min_weight")
+  maxWeight      Float    @default(99999) @map("max_weight")
+  price          Float    @default(0)
+  logoUrl        String?  @map("logo_url")
+  rateProtection Float    @default(0) @map("rate_protection")
+  coverage       Float    @default(0)
+  description    String?
+  category       String?
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  zone         RateZone     @relation(fields: [zoneId], references: [id])
+  deliveryType DeliveryType @relation(fields: [deliveryTypeId], references: [id])
+  userGroups   RateUserGroup[]
+
+  @@map("rates")
+}
+
+model RateUserGroup {
+  rateId      String @map("rate_id")
+  userGroupId String @map("user_group_id")
+
+  rate      Rate      @relation(fields: [rateId], references: [id], onDelete: Cascade)
+  userGroup UserGroup @relation(fields: [userGroupId], references: [id])
+
+  @@id([rateId, userGroupId])
+  @@map("rate_user_groups")
+}
+
+model Surcharge {
+  id          String  @id @default(cuid())
+  item        String
+  cost        Float   @default(0)
+  costType    String  @default("flat") @map("cost_type")
+  percentVal  Float   @default(0) @map("percent_val")
+  isActive    Boolean @default(true) @map("is_active")
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  shipmentSurcharges ShipmentSurcharge[]
+
+  @@map("surcharges")
+}
+
+model InsurancePlan {
+  id          String        @id @default(cuid())
+  name        String
+  type        InsuranceType @default(PERCENTAGE)
+  minValue    Float         @default(0) @map("min_value")
+  maxValue    Float         @default(10000) @map("max_value")
+  coverage    Float         @default(100)
+  cost        Float         @default(6)
+  isActive    Boolean       @default(true) @map("is_active")
+
+  @@map("insurance_plans")
+}
+
+// ─── USER GROUPS ─────────────────────────────────────────────────────────────
+
+model UserGroup {
+  id          String  @id @default(cuid())
+  label       String
+  description String?
+
+  members   UserGroupMember[]
+  rateLinks RateUserGroup[]
+
+  @@map("user_groups")
+}
+
+model UserGroupMember {
+  userId      String @map("user_id")
+  userGroupId String @map("user_group_id")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userGroup UserGroup @relation(fields: [userGroupId], references: [id], onDelete: Cascade)
+
+  @@id([userId, userGroupId])
+  @@map("user_group_members")
+}
+
+// ─── CUSTOM FIELD DEFINITIONS ─────────────────────────────────────────────────
+
+model CustomFieldDefinition {
+  id                   String    @id @default(cuid())
+  label                String
+  description          String?
+  fieldType            FieldType @map("field_type")
+  fieldKey             String    @unique @map("field_key")
+  required             Boolean   @default(false)
+  weight               Int       @default(0)
+  section              String?
+  fieldData            Json?     @map("field_data")
+  isActive             Boolean   @default(true) @map("is_active")
+  currency             String?
+  formula              String?
+  format               String?
+  html                 String?
+  displayFlags         String?   @map("display_flags")
+  conditionLogicEnable Boolean   @default(false) @map("condition_logic_enable")
+  conditionShowHide    String?   @map("condition_show_hide")
+  conditionOptions     String?   @map("condition_options")
+  conditionList        Json?     @map("condition_list")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  values ShipmentCustomFieldValue[]
+
+  @@map("custom_field_definitions")
+}
+
+// ─── SHIPMENTS ───────────────────────────────────────────────────────────────
+
+model Shipment {
+  id             String         @id @default(cuid())
+  trackingNumber String         @unique @map("tracking_number")
+  status         ShipmentStatus @default(PENDING)
+  shipmentType   ShipmentType   @default(PARCEL) @map("shipment_type")
+  paymentStatus  PaymentStatus  @default(UNPAID) @map("payment_status")
+
+  senderId         String?  @map("sender_id")
+  originBranchId   String?  @map("origin_branch_id")
+  destBranchId     String?  @map("dest_branch_id")
+
+  // Shipper info
+  shipperName     String  @map("shipper_name")
+  shipperPhone    String? @map("shipper_phone")
+  shipperEmail    String? @map("shipper_email")
+  shipperAddress  String? @map("shipper_address")
+  shipperCity     String? @map("shipper_city")
+  shipperProvince String? @map("shipper_province")
+  shipperPostcode String? @map("shipper_postcode")
+  shipperCountry  String  @default("CA") @map("shipper_country")
+
+  // Receiver info
+  receiverName     String  @map("receiver_name")
+  receiverPhone    String? @map("receiver_phone")
+  receiverEmail    String? @map("receiver_email")
+  receiverAddress  String? @map("receiver_address")
+  receiverCity     String? @map("receiver_city")
+  receiverProvince String? @map("receiver_province")
+  receiverPostcode String? @map("receiver_postcode")
+  receiverCountry  String  @default("VN") @map("receiver_country")
+
+  // Dimensions & weight (totals)
+  totalWeight    Float  @default(0) @map("total_weight")
+  totalPieces    Int    @default(1) @map("total_pieces")
+  totalVolume    Float? @map("total_volume")
+
+  // Rate & pricing
+  rateId           String?  @map("rate_id")
+  deliveryTypeId   String?  @map("delivery_type_id")
+  baseRate         Float    @default(0) @map("base_rate")
+  fuelSurcharge    Float    @default(0) @map("fuel_surcharge")
+  insuranceAmount  Float    @default(0) @map("insurance_amount")
+  insuranceValue   Float    @default(0) @map("insurance_value")
+  surchargesTotal  Float    @default(0) @map("surcharges_total")
+  discount         Float    @default(0)
+  totalAmount      Float    @default(0) @map("total_amount")
+  currency         String   @default("CAD")
+  userMarkup       Float    @default(0) @map("user_markup")
+
+  // Carrier info
+  carrierName      String?  @map("carrier_name")
+  carrierTrackNum  String?  @map("carrier_track_num")
+  freightcomId     String?  @map("freightcom_id")
+  labelUrl         String?  @map("label_url")
+
+  // Dates
+  pickupDate       DateTime? @map("pickup_date")
+  expectedDelivery DateTime? @map("expected_delivery")
+  deliveredAt      DateTime? @map("delivered_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Notes
+  notes           String?
+  internalNotes   String? @map("internal_notes")
+  employeeId      String? @map("employee_id")
+
+  sender       User?    @relation("ShipmentSender", fields: [senderId], references: [id])
+  originBranch Branch?  @relation("ShipmentOriginBranch", fields: [originBranchId], references: [id])
+  destBranch   Branch?  @relation("ShipmentDestBranch", fields: [destBranchId], references: [id])
+
+  packages      ShipmentPackage[]
+  statusHistory ShipmentStatusHistory[]
+  surcharges    ShipmentSurcharge[]
+  customFields  ShipmentCustomFieldValue[]
+
+  @@index([trackingNumber])
+  @@index([status])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([shipperCountry, receiverCountry])
+  @@map("shipments")
+}
+
+model ShipmentPackage {
+  id          String  @id @default(cuid())
+  shipmentId  String  @map("shipment_id")
+  sequence    Int     @default(1)
+  description String?
+  weight      Float   @default(0)
+  length      Float?
+  width       Float?
+  height      Float?
+  volume      Float?
+  value       Float?
+  isFragile   Boolean @default(false) @map("is_fragile")
+  isDangerous Boolean @default(false) @map("is_dangerous")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_packages")
+}
+
+model ShipmentStatusHistory {
+  id          String         @id @default(cuid())
+  shipmentId  String         @map("shipment_id")
+  status      ShipmentStatus
+  note        String?
+  location    String?
+  updatedById String?        @map("updated_by_id")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("shipment_status_history")
+}
+
+model ShipmentSurcharge {
+  shipmentId  String @map("shipment_id")
+  surchargeId String @map("surcharge_id")
+  amount      Float  @default(0)
+  quantity    Int    @default(1)
+
+  shipment  Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  surcharge Surcharge @relation(fields: [surchargeId], references: [id])
+
+  @@id([shipmentId, surchargeId])
+  @@map("shipment_surcharges")
+}
+
+model ShipmentCustomFieldValue {
+  shipmentId String @map("shipment_id")
+  fieldId    String @map("field_id")
+  value      String
+
+  shipment Shipment              @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  field    CustomFieldDefinition @relation(fields: [fieldId], references: [id])
+
+  @@id([shipmentId, fieldId])
+  @@map("shipment_custom_field_values")
+}
+
+// ─── ADDRESS BOOK ─────────────────────────────────────────────────────────────
+
+model AddressBook {
+  id         String  @id @default(cuid())
+  userId     String  @map("user_id")
+  type       String  @default("receiver")
+  name       String
+  phone      String?
+  email      String?
+  address    String?
+  city       String?
+  province   String?
+  postcode   String?
+  country    String  @default("VN")
+  isDefault  Boolean @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("address_book")
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+model NotificationTemplate {
+  id        String              @id @default(cuid())
+  name      String
+  event     String
+  channel   NotificationChannel
+  subject   String?
+  body      String
+  isActive  Boolean             @default(true) @map("is_active")
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@map("notification_templates")
+}
+
+model NotificationQueue {
+  id          String              @id @default(cuid())
+  channel     NotificationChannel
+  recipient   String
+  subject     String?
+  body        String
+  status      NotificationStatus  @default(PENDING)
+  attempts    Int                 @default(0)
+  lastAttempt DateTime?           @map("last_attempt")
+  sentAt      DateTime?           @map("sent_at")
+  error       String?
+  shipmentId  String?             @map("shipment_id")
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("notification_queue")
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// ─── AUDIT LOGS ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  changes    Json?
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
