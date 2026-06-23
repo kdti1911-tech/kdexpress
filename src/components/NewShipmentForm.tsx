@@ -91,6 +91,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const totalWeight = packages.reduce((sum, p) => sum + (parseFloat(p.weight) || 0), 0);
 
@@ -159,6 +160,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setValidationErrors({});
     setLoading(true);
 
     try {
@@ -206,6 +208,14 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
       const data = await res.json();
       if (!data.success) {
         setError(data.error ?? "Failed to create shipment");
+        if (data.details && Array.isArray(data.details)) {
+          const fieldErrors: Record<string, string> = {};
+          for (const err of data.details) {
+            const path = Array.isArray(err.path) ? err.path.join(".") : String(err.path ?? "unknown");
+            fieldErrors[path] = err.message;
+          }
+          setValidationErrors(fieldErrors);
+        }
         return;
       }
       router.push(`/shipments/${data.data.id}`);
@@ -346,7 +356,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         </div>
         <div className="space-y-4">
           {packages.map((pkg, i) => (
-            <div key={i} className="grid grid-cols-6 gap-3 items-end border-b border-gray-100 pb-4">
+            <div key={i} className="grid grid-cols-8 gap-2 items-end border-b border-gray-100 pb-4">
               <div className="col-span-2">
                 <label className={labelCls}>Description</label>
                 <input value={pkg.description} onChange={e => updatePackage(i, "description", e.target.value)} className={inputCls} placeholder="Contents" />
@@ -356,12 +366,16 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
                 <input type="number" step="0.01" min="0.01" value={pkg.weight} onChange={e => updatePackage(i, "weight", e.target.value)} required className={inputCls} placeholder="2.5" />
               </div>
               <div>
-                <label className={labelCls}>L×W×H (cm)</label>
-                <div className="flex gap-1">
-                  <input type="number" step="0.1" value={pkg.length} onChange={e => updatePackage(i, "length", e.target.value)} className={inputCls} placeholder="L" />
-                  <input type="number" step="0.1" value={pkg.width} onChange={e => updatePackage(i, "width", e.target.value)} className={inputCls} placeholder="W" />
-                  <input type="number" step="0.1" value={pkg.height} onChange={e => updatePackage(i, "height", e.target.value)} className={inputCls} placeholder="H" />
-                </div>
+                <label className={labelCls}>L (cm)</label>
+                <input type="number" step="0.1" value={pkg.length} onChange={e => updatePackage(i, "length", e.target.value)} className={inputCls} placeholder="0" />
+              </div>
+              <div>
+                <label className={labelCls}>W (cm)</label>
+                <input type="number" step="0.1" value={pkg.width} onChange={e => updatePackage(i, "width", e.target.value)} className={inputCls} placeholder="0" />
+              </div>
+              <div>
+                <label className={labelCls}>H (cm)</label>
+                <input type="number" step="0.1" value={pkg.height} onChange={e => updatePackage(i, "height", e.target.value)} className={inputCls} placeholder="0" />
               </div>
               <div>
                 <label className={labelCls}>Value (CAD)</label>
@@ -513,9 +527,18 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         </div>
       </div>
 
-      {error && (
+      {(error || Object.keys(validationErrors).length > 0) && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-          {error}
+          {error && <div className="font-medium">{error}</div>}
+          {Object.keys(validationErrors).length > 0 && (
+            <ul className="mt-1 list-disc list-inside space-y-0.5">
+              {Object.entries(validationErrors).map(([field, msg]) => (
+                <li key={field}>
+                  <span className="font-medium">{field}:</span> {msg}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
