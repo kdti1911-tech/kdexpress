@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
+import QRCode from "qrcode";
 import PrintButton from "./PrintButton";
 
 type Params = { params: Promise<{ tracking: string }> };
@@ -45,6 +46,12 @@ export default async function LabelPage({ params }: Params) {
     .filter(Boolean)
     .join(", ");
 
+  const qrDataUrl = await QRCode.toDataURL(pkg.trackingNumber ?? "", {
+    width: 160,
+    margin: 1,
+    errorCorrectionLevel: "M",
+  });
+
   return (
     <>
       {/* Action bar — hidden when printing */}
@@ -83,19 +90,33 @@ export default async function LabelPage({ params }: Params) {
             </div>
           </div>
 
-          {/* Child tracking barcode area */}
-          <div className="px-4 py-5 border-b-2 border-black text-center">
-            <div className="text-xs text-gray-500 mb-2 uppercase tracking-widest">
-              Piece Tracking Number
-            </div>
-            <div
-              className="text-3xl font-bold tracking-widest leading-none"
-              style={{ letterSpacing: "0.15em" }}
-            >
-              {pkg.trackingNumber}
-            </div>
-            <div className="mt-3 text-sm font-bold uppercase tracking-wide bg-black text-white px-3 py-1 inline-block">
-              {pkg.sequence} / {shipment.totalPieces}
+          {/* Child tracking + QR code */}
+          <div className="px-4 py-4 border-b-2 border-black">
+            <div className="flex items-center gap-4">
+              {/* QR code */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrDataUrl}
+                alt={pkg.trackingNumber ?? ""}
+                width={120}
+                height={120}
+                className="flex-shrink-0"
+              />
+              {/* Tracking text */}
+              <div className="flex-1 text-center">
+                <div className="text-xs text-gray-500 mb-1 uppercase tracking-widest">
+                  Piece Tracking
+                </div>
+                <div
+                  className="text-2xl font-bold leading-tight break-all"
+                  style={{ letterSpacing: "0.05em" }}
+                >
+                  {pkg.trackingNumber}
+                </div>
+                <div className="mt-3 text-sm font-bold uppercase tracking-wide bg-black text-white px-3 py-1 inline-block">
+                  {pkg.sequence} / {shipment.totalPieces}
+                </div>
+              </div>
             </div>
           </div>
 

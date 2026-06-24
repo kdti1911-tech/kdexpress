@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
       (subtotal * (1 + userMarkup / 100)).toFixed(2)
     );
 
-    const trackingNumber = generateTrackingNumber("KDX");
+    const trackingNumber = generateTrackingNumber(user.userCode);
 
     const shipment = await db.shipment.create({
       data: {

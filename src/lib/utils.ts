@@ -5,10 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function generateTrackingNumber(prefix = "KDX"): string {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}${timestamp}${random}`;
+export function generateTrackingNumber(userCode?: string | null): string {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yy = String(now.getFullYear()).slice(-2);
+  const code = (userCode ?? "XXXX").slice(0, 4).toUpperCase().padEnd(4, "X");
+  const rand = String(Math.floor(Math.random() * 9000) + 1000);
+  return `KD-${dd}${mm}${yy}-${code}-${rand}`;
 }
 
 export function generateUserCode(): string {
