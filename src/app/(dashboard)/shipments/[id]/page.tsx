@@ -8,6 +8,11 @@ import {
   formatDateTime,
   SHIPMENT_STATUS_LABELS,
   SHIPMENT_STATUS_COLORS,
+  TRANSPORT_MODE_LABELS,
+  PAYMENT_METHOD_LABELS,
+  HAZARD_TYPE_LABELS,
+  DELIVERY_METHOD_LABELS,
+  TRUCK_VENDOR_LABELS,
 } from "@/lib/utils";
 import UpdateStatusForm from "@/components/UpdateStatusForm";
 
@@ -55,6 +60,23 @@ export default async function ShipmentDetailPage({ params }: Params) {
         >
           {SHIPMENT_STATUS_LABELS[shipment.status]}
         </span>
+        {/* Action links */}
+        <div className="flex gap-2 mt-4">
+          <Link
+            href={`/shipments/${shipment.id}/invoice`}
+            target="_blank"
+            className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            🖨 Invoice
+          </Link>
+          <Link
+            href={`/shipments/${shipment.id}/customs-invoice`}
+            target="_blank"
+            className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            📋 Customs Invoice
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-6">
@@ -267,6 +289,36 @@ export default async function ShipmentDetailPage({ params }: Params) {
                   label="Customer"
                   value={`${shipment.sender.name}${shipment.sender.userCode ? ` [${shipment.sender.userCode}]` : ""}`}
                 />
+              )}
+              {shipment.transportMode && (
+                <InfoRow label="Transport Mode" value={TRANSPORT_MODE_LABELS[shipment.transportMode] ?? shipment.transportMode} />
+              )}
+              {shipment.paymentMethod && (
+                <InfoRow label="Payment Method" value={PAYMENT_METHOD_LABELS[shipment.paymentMethod] ?? shipment.paymentMethod} />
+              )}
+              {shipment.hazardType && shipment.hazardType !== "NONE" && (
+                <InfoRow label="Lưu Ý / Hazard" value={HAZARD_TYPE_LABELS[shipment.hazardType] ?? shipment.hazardType} />
+              )}
+              {shipment.deliveryMethod && (
+                <InfoRow label="Delivery" value={DELIVERY_METHOD_LABELS[shipment.deliveryMethod] ?? shipment.deliveryMethod} />
+              )}
+              {shipment.truckVendor && (
+                <InfoRow label="Truck Vendor" value={TRUCK_VENDOR_LABELS[shipment.truckVendor] ?? shipment.truckVendor} />
+              )}
+              {shipment.truckCost && shipment.truckCost > 0 && (
+                <InfoRow label="Truck Cost" value={formatCurrency(shipment.truckCost)} />
+              )}
+              {shipment.chargeableWeight && shipment.chargeableWeight > 0 && (
+                <InfoRow label="Chargeable Weight" value={`${shipment.chargeableWeight.toFixed(2)} kg`} />
+              )}
+              {shipment.dimensionalWeight && shipment.dimensionalWeight > 0 && (
+                <InfoRow label="Dim Weight" value={`${shipment.dimensionalWeight.toFixed(2)} kg`} />
+              )}
+              {shipment.shipmentCategory && (
+                <InfoRow label="Category" value={shipment.shipmentCategory} />
+              )}
+              {shipment.marketingTracker && (
+                <InfoRow label="Source" value={shipment.marketingTracker} />
               )}
             </div>
           </div>

@@ -45,6 +45,10 @@ export default async function ShipmentsPage({ searchParams }: Props) {
         trackingNumber: true,
         status: true,
         paymentStatus: true,
+        transportMode: true,
+        paymentMethod: true,
+        hazardType: true,
+        shipmentCategory: true,
         shipperName: true,
         shipperCity: true,
         shipperCountry: true,
@@ -90,12 +94,20 @@ export default async function ShipmentsPage({ searchParams }: Props) {
           <h1 className="text-2xl font-bold text-gray-900">Shipments</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
         </div>
-        <Link
-          href="/shipments/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          + New Shipment
-        </Link>
+        <div className="flex gap-2">
+          <a
+            href="/api/shipments/export"
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            Export CSV
+          </a>
+          <Link
+            href="/shipments/new"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            + New Shipment
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -157,6 +169,12 @@ export default async function ShipmentsPage({ searchParams }: Props) {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Mode
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Payment
+                </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Weight
                 </th>
@@ -172,7 +190,7 @@ export default async function ShipmentsPage({ searchParams }: Props) {
               {shipments.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={isClient ? 6 : 7}
+                    colSpan={isClient ? 8 : 9}
                     className="px-4 py-10 text-center text-gray-400"
                   >
                     No shipments found.
@@ -225,6 +243,56 @@ export default async function ShipmentsPage({ searchParams }: Props) {
                       >
                         {SHIPMENT_STATUS_LABELS[s.status] ?? s.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.transportMode ? (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            s.transportMode === "AIR"
+                              ? "bg-blue-100 text-blue-700"
+                              : s.transportMode === "SEA"
+                              ? "bg-cyan-100 text-cyan-700"
+                              : s.transportMode === "TRUCK"
+                              ? "bg-amber-100 text-amber-700"
+                              : s.transportMode === "LOCAL_MOVING"
+                              ? "bg-purple-100 text-purple-700"
+                              : s.transportMode === "AIR_CANADA"
+                              ? "bg-red-100 text-red-700"
+                              : s.transportMode === "FAST_TRACK"
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {s.transportMode === "AIR_CANADA"
+                            ? "AIR CA"
+                            : s.transportMode === "LOCAL_MOVING"
+                            ? "MOVING"
+                            : s.transportMode === "FAST_TRACK"
+                            ? "FAST"
+                            : s.transportMode}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.paymentMethod ? (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            s.paymentMethod === "PAID_OK2SHIP"
+                              ? "bg-green-100 text-green-700"
+                              : s.paymentMethod === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : s.paymentMethod === "PAY_IN_VIETNAM" || s.paymentMethod === "PAY_IN_CANADA"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {s.paymentMethod}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">
                       {s.totalWeight.toFixed(2)} kg

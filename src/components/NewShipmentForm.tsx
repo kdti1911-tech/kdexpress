@@ -89,11 +89,30 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
   const [originBranchId, setOriginBranchId] = useState(userBranchId ?? "");
   const [pickupDate, setPickupDate] = useState("");
 
+  // Business-specific fields
+  const [transportMode, setTransportMode] = useState("AIR");
+  const [paymentMethod, setPaymentMethod] = useState("PENDING");
+  const [hazardType, setHazardType] = useState("NONE");
+  const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [truckVendor, setTruckVendor] = useState("");
+  const [truckCost, setTruckCost] = useState("");
+  const [marketingTracker, setMarketingTracker] = useState("");
+  const [shipmentCategory, setShipmentCategory] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const totalWeight = packages.reduce((sum, p) => sum + (parseFloat(p.weight) || 0), 0);
+
+  // Dim weight per package: L×W×H / 5000 (standard air formula)
+  const totalDimWeight = packages.reduce((sum, p) => {
+    const l = parseFloat(p.length) || 0;
+    const w = parseFloat(p.width) || 0;
+    const h = parseFloat(p.height) || 0;
+    return sum + (l * w * h > 0 ? (l * w * h) / 5000 : 0);
+  }, 0);
+  const chargeableWeight = Math.max(totalWeight, totalDimWeight);
 
   function addPackage() {
     setPackages([...packages, { ...EMPTY_PACKAGE }]);
@@ -203,6 +222,16 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           notes: notes || undefined,
           originBranchId: originBranchId || undefined,
           pickupDate: pickupDate || undefined,
+          transportMode: transportMode || undefined,
+          paymentMethod: paymentMethod || undefined,
+          hazardType: hazardType || undefined,
+          deliveryMethod: deliveryMethod || undefined,
+          truckVendor: truckVendor || undefined,
+          truckCost: truckCost ? parseFloat(truckCost) : undefined,
+          marketingTracker: marketingTracker || undefined,
+          shipmentCategory: shipmentCategory || undefined,
+          dimensionalWeight: totalDimWeight > 0 ? parseFloat(totalDimWeight.toFixed(2)) : undefined,
+          chargeableWeight: parseFloat(chargeableWeight.toFixed(2)),
         }),
       });
       const data = await res.json();
@@ -346,6 +375,56 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         </div>
       </div>
 
+      {/* Shipment Info */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="font-semibold text-gray-900 mb-4">Shipment Info</h2>
+        <div className="grid grid-cols-4 gap-3">
+          <div>
+            <label className={labelCls}>Transport Mode *</label>
+            <select value={transportMode} onChange={e => setTransportMode(e.target.value)} className={inputCls}>
+              <option value="AIR">AIR – Hàng không</option>
+              <option value="SEA">SEA – Đường biển</option>
+              <option value="TRUCK">TRUCK – Xe tải</option>
+              <option value="LOCAL_MOVING">LOCAL MOVING – Chuyển nhà</option>
+              <option value="AIR_CANADA">AIR CANADA</option>
+              <option value="FAST_TRACK">FAST TRACK</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Payment Method</label>
+            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={inputCls}>
+              <option value="PENDING">PENDING – Chưa thanh toán</option>
+              <option value="PAY_IN_VIETNAM">PAY IN VIETNAM</option>
+              <option value="PAY_IN_CANADA">PAY IN CANADA</option>
+              <option value="PAID_OK2SHIP">PAID – OK2SHIP</option>
+              <option value="CASH">CASH – Tiền mặt</option>
+              <option value="ETRANSFER">e-TRANSFER</option>
+              <option value="CARD">CARD – Thẻ</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Lưu Ý / Hazard</label>
+            <select value={hazardType} onChange={e => setHazardType(e.target.value)} className={inputCls}>
+              <option value="NONE">NO – Không có</option>
+              <option value="BATTERY_B">B – Pin thường</option>
+              <option value="BATTERY_BHV">B-HV – Pin điện áp cao</option>
+              <option value="FRAGILE">HÀNG DỄ VỠ</option>
+              <option value="MAGNETIC">TỪ TÍNH</option>
+              <option value="LIQUID">CHẤT LỎNG</option>
+              <option value="RESCUE">HÀNG CỨU TRỢ</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Delivery Method</label>
+            <select value={deliveryMethod} onChange={e => setDeliveryMethod(e.target.value)} className={inputCls}>
+              <option value="">— Select —</option>
+              <option value="COLLECT_AT_OFFICE">Nhận tại văn phòng</option>
+              <option value="HOME_DELIVERY">Giao tận nhà</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Packages */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
@@ -395,6 +474,13 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           <div className="text-sm text-gray-500">
             Total: <strong>{totalWeight.toFixed(2)} kg</strong> · {packages.length} piece(s)
           </div>
+          {totalDimWeight > 0 && (
+            <div className="text-sm text-gray-500">
+              Dim weight: <strong>{totalDimWeight.toFixed(2)} kg</strong>
+              {" · "}Chargeable: <strong className={chargeableWeight > totalWeight ? "text-orange-600" : "text-gray-900"}>{chargeableWeight.toFixed(2)} kg</strong>
+              {chargeableWeight > totalWeight && <span className="ml-1 text-xs text-orange-500">(dim weight applies)</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -502,6 +588,43 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           </div>
         </div>
       )}
+
+      {/* Logistics */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="font-semibold text-gray-900 mb-4">Logistics</h2>
+        <div className="grid grid-cols-4 gap-3">
+          <div>
+            <label className={labelCls}>Truck Vendor</label>
+            <select value={truckVendor} onChange={e => setTruckVendor(e.target.value)} className={inputCls}>
+              <option value="">— None —</option>
+              <option value="VITRAN">VITRAN</option>
+              <option value="FREIGHTCOM">FREIGHTCOM</option>
+              <option value="DIAMOND_DELIVERY">DIAMOND DELIVERY</option>
+              <option value="CVC">CVC</option>
+              <option value="KTX">KTX</option>
+              <option value="KDEXPRESS">KDEXPRESS</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Truck Cost (CAD)</label>
+            <input type="number" step="0.01" min="0" value={truckCost} onChange={e => setTruckCost(e.target.value)} className={inputCls} placeholder="0.00" />
+          </div>
+          <div>
+            <label className={labelCls}>Category</label>
+            <input value={shipmentCategory} onChange={e => setShipmentCategory(e.target.value)} className={inputCls} placeholder="e.g. Electronics, Clothing" />
+          </div>
+          <div>
+            <label className={labelCls}>Marketing Source</label>
+            <select value={marketingTracker} onChange={e => setMarketingTracker(e.target.value)} className={inputCls}>
+              <option value="">— Select —</option>
+              <option value="WALK_IN">Walk-in</option>
+              <option value="PAGE">Page</option>
+              <option value="FB_AD">FB-Ad</option>
+              <option value="HOTLINE">Hotline</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       {/* Other info */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">

@@ -70,6 +70,56 @@ enum InsuranceType {
   FLAT
 }
 
+enum TransportMode {
+  AIR
+  SEA
+  TRUCK
+  LOCAL_MOVING
+  AIR_CANADA
+  FAST_TRACK
+}
+
+enum PaymentMethod {
+  PENDING
+  PAY_IN_VIETNAM
+  PAY_IN_CANADA
+  PAID_OK2SHIP
+  CASH
+  ETRANSFER
+  CARD
+}
+
+enum HazardType {
+  NONE
+  BATTERY_B
+  BATTERY_BHV
+  FRAGILE
+  MAGNETIC
+  LIQUID
+  RESCUE
+}
+
+enum DeliveryMethod {
+  COLLECT_AT_OFFICE
+  HOME_DELIVERY
+}
+
+enum TruckVendor {
+  VITRAN
+  FREIGHTCOM
+  DIAMOND_DELIVERY
+  CVC
+  KTX
+  KDEXPRESS
+}
+
+enum MarketingTracker {
+  WALK_IN
+  PAGE
+  FB_AD
+  HOTLINE
+}
+
 enum NotificationChannel {
   EMAIL
   SMS
@@ -380,6 +430,19 @@ model Shipment {
   deliveredAt      DateTime? @map("delivered_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Business-specific fields
+  transportMode     TransportMode?    @map("transport_mode")
+  paymentMethod     PaymentMethod?    @default(PENDING) @map("payment_method")
+  hazardType        HazardType?       @default(NONE) @map("hazard_type")
+  deliveryMethod    DeliveryMethod?   @map("delivery_method")
+  truckVendor       TruckVendor?      @map("truck_vendor")
+  truckCost         Float?            @map("truck_cost")
+  marketingTracker  MarketingTracker? @map("marketing_tracker")
+  dimensionalWeight Float?            @map("dimensional_weight")
+  chargeableWeight  Float?            @map("chargeable_weight")
+  agentId           String?           @map("agent_id")
+  shipmentCategory  String?           @map("shipment_category")
 
   // Notes
   notes           String?

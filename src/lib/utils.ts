@@ -82,6 +82,56 @@ export const SHIPMENT_STATUS_COLORS: Record<string, string> = {
   LOST: "bg-red-200 text-red-900",
 };
 
+export const TRANSPORT_MODE_LABELS: Record<string, string> = {
+  AIR: "AIR – Hàng không",
+  SEA: "SEA – Đường biển",
+  TRUCK: "TRUCK – Xe tải",
+  LOCAL_MOVING: "LOCAL MOVING – Chuyển nhà",
+  AIR_CANADA: "AIR CANADA",
+  FAST_TRACK: "FAST TRACK",
+};
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  PENDING: "PENDING – Chưa thanh toán",
+  PAY_IN_VIETNAM: "PAY IN VIETNAM – Trả ở VN",
+  PAY_IN_CANADA: "PAY IN CANADA – Trả ở Canada",
+  PAID_OK2SHIP: "PAID – OK2SHIP",
+  CASH: "CASH – Tiền mặt",
+  ETRANSFER: "e-TRANSFER",
+  CARD: "CARD – Thẻ",
+};
+
+export const HAZARD_TYPE_LABELS: Record<string, string> = {
+  NONE: "NO – Không có",
+  BATTERY_B: "B – Pin thường",
+  BATTERY_BHV: "B-HV – Pin điện áp cao",
+  FRAGILE: "HÀNG DỄ VỠ",
+  MAGNETIC: "TỪ TÍNH",
+  LIQUID: "CHẤT LỎNG",
+  RESCUE: "HÀNG CỨU TRỢ",
+};
+
+export const DELIVERY_METHOD_LABELS: Record<string, string> = {
+  COLLECT_AT_OFFICE: "Nhận tại văn phòng",
+  HOME_DELIVERY: "Giao tận nhà",
+};
+
+export const TRUCK_VENDOR_LABELS: Record<string, string> = {
+  VITRAN: "VITRAN",
+  FREIGHTCOM: "FREIGHTCOM",
+  DIAMOND_DELIVERY: "DIAMOND DELIVERY",
+  CVC: "CVC",
+  KTX: "KTX",
+  KDEXPRESS: "KDEXPRESS",
+};
+
+export const MARKETING_TRACKER_LABELS: Record<string, string> = {
+  WALK_IN: "Walk-in",
+  PAGE: "Page",
+  FB_AD: "FB-Ad",
+  HOTLINE: "Hotline",
+};
+
 export const COUNTRIES: { code: string; name: string }[] = [
   { code: "CA", name: "Canada" },
   { code: "VN", name: "Vietnam" },
