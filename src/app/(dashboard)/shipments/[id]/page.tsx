@@ -107,16 +107,27 @@ export default async function ShipmentDetailPage({ params }: Params) {
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="text-left py-2 text-xs text-gray-400 font-medium">#</th>
+                    <th className="text-left py-2 text-xs text-gray-400 font-medium">Piece Tracking</th>
                     <th className="text-left py-2 text-xs text-gray-400 font-medium">Description</th>
                     <th className="text-right py-2 text-xs text-gray-400 font-medium">Weight</th>
                     <th className="text-right py-2 text-xs text-gray-400 font-medium">Dimensions</th>
                     <th className="text-right py-2 text-xs text-gray-400 font-medium">Value</th>
+                    <th className="py-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {shipment.packages.map((pkg) => (
                     <tr key={pkg.id}>
                       <td className="py-2 text-gray-400">{pkg.sequence}</td>
+                      <td className="py-2">
+                        {pkg.trackingNumber ? (
+                          <span className="font-mono text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                            {pkg.trackingNumber}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
                       <td className="py-2 text-gray-700">{pkg.description || "—"}</td>
                       <td className="py-2 text-right text-gray-900">{pkg.weight.toFixed(2)} kg</td>
                       <td className="py-2 text-right text-gray-500">
@@ -126,6 +137,17 @@ export default async function ShipmentDetailPage({ params }: Params) {
                       </td>
                       <td className="py-2 text-right text-gray-500">
                         {pkg.value ? formatCurrency(pkg.value) : "—"}
+                      </td>
+                      <td className="py-2 pl-3">
+                        {pkg.trackingNumber && (
+                          <Link
+                            href={`/label/${pkg.trackingNumber}`}
+                            target="_blank"
+                            className="text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 rounded px-2 py-1 whitespace-nowrap transition-colors"
+                          >
+                            🖨 Label
+                          </Link>
+                        )}
                       </td>
                     </tr>
                   ))}

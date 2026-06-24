@@ -11,6 +11,18 @@ type StatusEvent = {
   createdAt: string;
 };
 
+type PackagePiece = {
+  id: string;
+  trackingNumber: string | null;
+  sequence: number;
+  description: string | null;
+  weight: number;
+  length: number | null;
+  width: number | null;
+  height: number | null;
+  isFragile: boolean;
+};
+
 type TrackingResult = {
   trackingNumber: string;
   status: string;
@@ -27,6 +39,8 @@ type TrackingResult = {
   deliveredAt: string | null;
   createdAt: string;
   statusHistory: StatusEvent[];
+  packages: PackagePiece[];
+  searchedPieceTracking: string | null;
 };
 
 export default function TrackingPage() {
@@ -153,6 +167,58 @@ export default function TrackingPage() {
                 {result.deliveredAt && (
                   <InfoBlock label="Delivered" value={formatDateTime(result.deliveredAt)} />
                 )}
+              </div>
+            )}
+
+            {/* Packages */}
+            {result.packages.length > 0 && (
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Pieces ({result.totalPieces})
+                </h3>
+                <div className="space-y-2">
+                  {result.packages.map((pkg) => {
+                    const isSearched = pkg.trackingNumber === result.searchedPieceTracking;
+                    return (
+                      <div
+                        key={pkg.id}
+                        className={`flex items-center gap-4 p-3 rounded-lg text-sm ${
+                          isSearched
+                            ? "bg-blue-50 border border-blue-200"
+                            : "bg-gray-50 border border-gray-100"
+                        }`}
+                      >
+                        <span className="text-gray-400 font-medium w-6 text-center">
+                          {pkg.sequence}
+                        </span>
+                        <div className="flex-1">
+                          {pkg.trackingNumber && (
+                            <div className="font-mono font-semibold text-gray-900">
+                              {pkg.trackingNumber}
+                              {isSearched && (
+                                <span className="ml-2 text-xs text-blue-600 font-sans">(this piece)</span>
+                              )}
+                            </div>
+                          )}
+                          {pkg.description && (
+                            <div className="text-gray-500 text-xs">{pkg.description}</div>
+                          )}
+                        </div>
+                        <div className="text-right text-gray-600">
+                          <div>{pkg.weight.toFixed(2)} kg</div>
+                          {pkg.length && pkg.width && pkg.height && (
+                            <div className="text-xs text-gray-400">
+                              {pkg.length}×{pkg.width}×{pkg.height} cm
+                            </div>
+                          )}
+                          {pkg.isFragile && (
+                            <div className="text-xs text-red-500 font-medium">Fragile</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

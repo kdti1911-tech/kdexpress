@@ -404,21 +404,23 @@ model Shipment {
 }
 
 model ShipmentPackage {
-  id          String  @id @default(cuid())
-  shipmentId  String  @map("shipment_id")
-  sequence    Int     @default(1)
-  description String?
-  weight      Float   @default(0)
-  length      Float?
-  width       Float?
-  height      Float?
-  volume      Float?
-  value       Float?
-  isFragile   Boolean @default(false) @map("is_fragile")
-  isDangerous Boolean @default(false) @map("is_dangerous")
+  id             String  @id @default(cuid())
+  shipmentId     String  @map("shipment_id")
+  trackingNumber String? @unique @map("tracking_number")
+  sequence       Int     @default(1)
+  description    String?
+  weight         Float   @default(0)
+  length         Float?
+  width          Float?
+  height         Float?
+  volume         Float?
+  value          Float?
+  isFragile      Boolean @default(false) @map("is_fragile")
+  isDangerous    Boolean @default(false) @map("is_dangerous")
 
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 
+  @@index([trackingNumber])
   @@map("shipment_packages")
 }
 

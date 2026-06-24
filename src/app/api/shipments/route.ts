@@ -192,6 +192,7 @@ export async function POST(req: NextRequest) {
         packages: {
           create: data.packages.map((p, i) => ({
             sequence: i + 1,
+            trackingNumber: `${trackingNumber}-${String(i + 1).padStart(2, "0")}`,
             description: p.description,
             weight: p.weight,
             length: p.length,
