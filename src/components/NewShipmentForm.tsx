@@ -100,10 +100,6 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
   const [marketingTracker, setMarketingTracker] = useState("");
   const [shipmentCategory, setShipmentCategory] = useState("");
 
-  // Address book save toggles
-  const [saveShipperToBook, setSaveShipperToBook] = useState(false);
-  const [saveReceiverToBook, setSaveReceiverToBook] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -275,24 +271,6 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         return;
       }
 
-      // Save to address book if requested
-      const bookSaves: Promise<unknown>[] = [];
-      if (saveShipperToBook && shipperName) {
-        bookSaves.push(fetch("/api/address-book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "shipper", name: shipperName, phone: shipperPhone, email: shipperEmail, address: shipperAddress, city: shipperCity, province: shipperProvince, postcode: shipperPostcode, country: shipperCountry }),
-        }));
-      }
-      if (saveReceiverToBook && receiverName) {
-        bookSaves.push(fetch("/api/address-book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "receiver", name: receiverName, phone: receiverPhone, email: receiverEmail, address: receiverAddress, city: receiverCity, province: receiverProvince, postcode: receiverPostcode, country: receiverCountry }),
-        }));
-      }
-      if (bookSaves.length > 0) await Promise.all(bookSaves);
-
       router.push(`/shipments/${data.data.id}`);
       router.refresh();
     } catch {
@@ -362,10 +340,6 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
                 <input value={shipperPostcode} onChange={e => setShipperPostcode(e.target.value)} className={inputCls} placeholder="M5H 2N2" />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer pt-1">
-              <input type="checkbox" checked={saveShipperToBook} onChange={e => setSaveShipperToBook(e.target.checked)} className="rounded" />
-              Save shipper to address book
-            </label>
           </div>
         </div>
 
@@ -423,10 +397,6 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
                 <input value={receiverPostcode} onChange={e => setReceiverPostcode(e.target.value)} className={inputCls} />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer pt-1">
-              <input type="checkbox" checked={saveReceiverToBook} onChange={e => setSaveReceiverToBook(e.target.checked)} className="rounded" />
-              Save receiver to address book
-            </label>
           </div>
         </div>
       </div>

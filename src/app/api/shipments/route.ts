@@ -252,6 +252,39 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Auto-save shipper and receiver to address book (name+phone dedup)
+    const saveContact = async (
+      type: "shipper" | "receiver",
+      name: string,
+      phone: string | undefined,
+      email: string | null | undefined,
+      address: string | undefined,
+      city: string | undefined,
+      province: string | undefined,
+      postcode: string | undefined,
+      country: string,
+    ) => {
+      if (!name) return;
+      const existing = await db.addressBook.findFirst({
+        where: {
+          userId: user.id,
+          type,
+          name: { equals: name, mode: "insensitive" },
+          phone: phone ? { equals: phone, mode: "insensitive" } : null,
+        },
+      });
+      if (!existing) {
+        await db.addressBook.create({
+          data: { userId: user.id, type, name, phone: phone || null, email: email || null, address, city, province, postcode, country },
+        }).catch(() => {}); // ignore race-condition duplicates
+      }
+    };
+
+    await Promise.all([
+      saveContact("shipper", data.shipperName, data.shipperPhone, data.shipperEmail, data.shipperAddress, data.shipperCity, data.shipperProvince, data.shipperPostcode, data.shipperCountry),
+      saveContact("receiver", data.receiverName, data.receiverPhone, data.receiverEmail, data.receiverAddress, data.receiverCity, data.receiverProvince, data.receiverPostcode, data.receiverCountry),
+    ]);
+
     return NextResponse.json(
       { success: true, data: { id: shipment.id, trackingNumber } },
       { status: 201 }
