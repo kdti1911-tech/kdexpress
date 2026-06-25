@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+﻿import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatCurrency, formatDate, SHIPMENT_STATUS_LABELS, SHIPMENT_STATUS_COLORS } from "@/lib/utils";
@@ -103,7 +103,7 @@ export default async function ShipmentsPage({ searchParams }: Props) {
           </a>
           <Link
             href="/shipments/new"
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-green-700 hover:bg-green-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             + New Shipment
           </Link>
@@ -119,14 +119,14 @@ export default async function ShipmentsPage({ searchParams }: Props) {
               name="search"
               defaultValue={search}
               placeholder="Search tracking #, name, phone..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </form>
           <div className="flex gap-2 flex-wrap">
             <Link
               href={buildUrl({ status: undefined, page: "1" })}
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                !status ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                !status ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               All
@@ -136,7 +136,7 @@ export default async function ShipmentsPage({ searchParams }: Props) {
                 key={s}
                 href={buildUrl({ status: s, page: "1" })}
                 className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  status === s ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  status === s ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 {SHIPMENT_STATUS_LABELS[s]}
@@ -202,7 +202,7 @@ export default async function ShipmentsPage({ searchParams }: Props) {
                     <td className="px-4 py-3">
                       <Link
                         href={`/shipments/${s.id}`}
-                        className="font-mono text-blue-600 hover:underline"
+                        className="font-mono text-green-700 hover:underline"
                       >
                         {s.trackingNumber}
                       </Link>

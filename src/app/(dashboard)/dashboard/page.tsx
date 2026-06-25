@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+﻿import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatCurrency, SHIPMENT_STATUS_LABELS } from "@/lib/utils";
 import Link from "next/link";
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <Link
           href="/shipments/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="bg-green-700 hover:bg-green-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + New Shipment
         </Link>
@@ -97,7 +97,7 @@ export default async function DashboardPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Recent Shipments</h2>
-          <Link href="/shipments" className="text-sm text-blue-600 hover:underline">
+          <Link href="/shipments" className="text-sm text-green-700 hover:underline">
             View all
           </Link>
         </div>
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
           {recent.length === 0 ? (
             <div className="px-6 py-10 text-center text-gray-400 text-sm">
               No shipments yet.{" "}
-              <Link href="/shipments/new" className="text-blue-600 hover:underline">
+              <Link href="/shipments/new" className="text-green-700 hover:underline">
                 Create your first shipment
               </Link>
             </div>
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
                 href={`/shipments/${s.id}`}
                 className="flex items-center gap-4 px-6 py-3 hover:bg-gray-50 transition-colors"
               >
-                <div className="font-mono text-sm text-blue-600 w-36 flex-shrink-0">
+                <div className="font-mono text-sm text-green-700 w-36 flex-shrink-0">
                   {s.trackingNumber}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -152,7 +152,7 @@ function StatCard({
   color: "blue" | "yellow" | "purple" | "green";
 }) {
   const colors = {
-    blue: "bg-blue-50 text-blue-700",
+    blue: "bg-green-50 text-blue-700",
     yellow: "bg-yellow-50 text-yellow-700",
     purple: "bg-purple-50 text-purple-700",
     green: "bg-green-50 text-green-700",

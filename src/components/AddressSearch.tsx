@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 
@@ -81,11 +81,11 @@ export default function AddressSearch({ type, onSelect }: Props) {
           onChange={handleInput}
           onFocus={() => query.length > 0 && results.length > 0 && setOpen(true)}
           placeholder="Search address book by name or phone…"
-          className="w-full pl-9 pr-3 py-2 border border-blue-200 bg-blue-50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white placeholder:text-gray-400"
+          className="w-full pl-9 pr-3 py-2 border border-green-200 bg-green-50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white placeholder:text-gray-400"
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
@@ -97,7 +97,7 @@ export default function AddressSearch({ type, onSelect }: Props) {
               <button
                 type="button"
                 onClick={() => handleSelect(entry)}
-                className="w-full text-left px-4 py-2.5 hover:bg-blue-50 flex items-start gap-3 border-b border-gray-50 last:border-0"
+                className="w-full text-left px-4 py-2.5 hover:bg-green-50 flex items-start gap-3 border-b border-gray-50 last:border-0"
               >
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
                   {entry.name.charAt(0).toUpperCase()}

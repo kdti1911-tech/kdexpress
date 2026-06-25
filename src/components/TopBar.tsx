@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import type { AuthUser } from "@/lib/auth";
@@ -18,7 +18,7 @@ export default function TopBar({ user }: { user: NonNullable<AuthUser> }) {
         <a
           href="/tracking"
           target="_blank"
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-green-700 hover:underline"
         >
           Public Tracking
         </a>
@@ -29,7 +29,7 @@ export default function TopBar({ user }: { user: NonNullable<AuthUser> }) {
           Welcome, <strong>{user.name}</strong>
         </span>
         {user.branch && (
-          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+          <span className="text-xs bg-green-50 text-blue-700 px-2 py-1 rounded-full">
             {user.branch.name}
           </span>
         )}

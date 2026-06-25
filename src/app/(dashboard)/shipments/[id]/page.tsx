@@ -52,7 +52,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
           ← Shipments
         </Link>
         <span className="text-gray-300">/</span>
-        <span className="font-mono text-blue-600 font-semibold">{shipment.trackingNumber}</span>
+        <span className="font-mono text-green-700 font-semibold">{shipment.trackingNumber}</span>
         <span
           className={`ml-auto text-xs font-medium px-3 py-1 rounded-full ${
             SHIPMENT_STATUS_COLORS[shipment.status] ?? "bg-gray-100 text-gray-700"
@@ -143,7 +143,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
                       <td className="py-2 text-gray-400">{pkg.sequence}</td>
                       <td className="py-2">
                         {pkg.trackingNumber ? (
-                          <span className="font-mono text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                          <span className="font-mono text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded">
                             {pkg.trackingNumber}
                           </span>
                         ) : (
@@ -165,7 +165,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
                           <Link
                             href={`/label/${pkg.trackingNumber}`}
                             target="_blank"
-                            className="text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 rounded px-2 py-1 whitespace-nowrap transition-colors"
+                            className="text-xs text-gray-500 hover:text-green-700 hover:bg-green-50 border border-gray-200 rounded px-2 py-1 whitespace-nowrap transition-colors"
                           >
                             🖨 Label
                           </Link>
@@ -188,7 +188,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
                     <div
                       className={`w-3 h-3 rounded-full flex-shrink-0 mt-0.5 ${
                         i === shipment.statusHistory.length - 1
-                          ? "bg-blue-500"
+                          ? "bg-green-600"
                           : "bg-gray-300"
                       }`}
                     />
@@ -346,7 +346,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
               <a
                 href={shipment.labelUrl}
                 target="_blank"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                className="inline-flex items-center gap-2 text-sm text-green-700 hover:underline"
               >
                 Download Label →
               </a>

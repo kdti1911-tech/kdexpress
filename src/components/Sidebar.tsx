@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -86,11 +86,11 @@ export default function Sidebar({ user }: { user: NonNullable<AuthUser> }) {
   );
 
   return (
-    <aside className="w-64 bg-gray-900 text-white flex flex-col">
+    <aside className="w-64 bg-green-900 text-white flex flex-col">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-gray-800">
+      <div className="px-6 py-5 border-b border-green-800">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -114,8 +114,8 @@ export default function Sidebar({ user }: { user: NonNullable<AuthUser> }) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 active
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-gray-800"
+                  ? "bg-green-700 text-white"
+                  : "text-green-200 hover:text-white hover:bg-green-800"
               )}
             >
               {item.icon}
@@ -126,14 +126,14 @@ export default function Sidebar({ user }: { user: NonNullable<AuthUser> }) {
       </nav>
 
       {/* User info */}
-      <div className="px-4 py-4 border-t border-gray-800">
-        <div className="text-xs text-gray-400 mb-1">{user.name}</div>
+      <div className="px-4 py-4 border-t border-green-800">
+        <div className="text-xs text-green-300 mb-1">{user.name}</div>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium bg-gray-800 text-gray-300 px-2 py-0.5 rounded">
+          <span className="text-xs font-medium bg-green-800 text-green-200 px-2 py-0.5 rounded">
             {user.role}
           </span>
           {user.userCode && (
-            <span className="text-xs text-gray-500 font-mono">{user.userCode}</span>
+            <span className="text-xs text-green-400 font-mono">{user.userCode}</span>
           )}
         </div>
       </div>

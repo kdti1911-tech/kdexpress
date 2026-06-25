@@ -32,7 +32,7 @@ export default async function InvoicePage({ params }: Params) {
       <div className="print:hidden bg-gray-100 border-b px-6 py-3 flex items-center gap-4">
         <Link href={`/shipments/${id}`} className="text-sm text-gray-600 hover:text-gray-900">← Back</Link>
         <span className="text-sm text-gray-500">Invoice {invoiceNum}</span>
-        <button onClick={undefined} className="ml-auto bg-blue-600 text-white text-sm px-4 py-2 rounded-lg print:hidden" id="print-btn">Print</button>
+        <button onClick={undefined} className="ml-auto bg-green-700 text-white text-sm px-4 py-2 rounded-lg print:hidden" id="print-btn">Print</button>
         <script dangerouslySetInnerHTML={{ __html: "document.getElementById('print-btn').onclick=()=>window.print()" }} />
       </div>
 

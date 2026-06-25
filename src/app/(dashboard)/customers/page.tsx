@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+﻿import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
@@ -85,7 +85,7 @@ export default async function CustomersPage({ searchParams }: Props) {
         {canCreate && (
           <Link
             href="/customers/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800"
           >
             + New User
           </Link>
@@ -101,17 +101,17 @@ export default async function CustomersPage({ searchParams }: Props) {
               name="search"
               defaultValue={search}
               placeholder="Search name, email, code, phone..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </form>
           <div className="flex gap-2 flex-wrap">
             <a href={buildUrl({ role: undefined, page: "1" })}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${!role ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${!role ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
               All
             </a>
             {roles.map((r) => (
               <a key={r} href={buildUrl({ role: r, page: "1" })}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${role === r ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${role === r ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                 {ROLE_LABELS[r as keyof typeof ROLE_LABELS] ?? r}
               </a>
             ))}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -121,7 +121,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name <span className="text-red-500">*</span></label>
             <input
               name="name" value={form.name} onChange={handleChange} required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
               placeholder="Nguyen Van A"
             />
           </div>
@@ -130,7 +130,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
             <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
             <input
               name="email" type="email" value={form.email} onChange={handleChange} required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
               placeholder="user@example.com"
             />
           </div>
@@ -139,7 +139,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
             <input
               name="phone" value={form.phone} onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
               placeholder="+1 416 555 0000"
             />
           </div>
@@ -151,7 +151,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
             <input
               name="password" type="password" value={form.password} onChange={handleChange}
               required={!isEdit}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
               placeholder={isEdit ? "Leave blank to keep current password" : "Min 6 characters"}
             />
           </div>
@@ -167,7 +167,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
             <label className="block text-sm font-medium text-gray-700 mb-1">Role <span className="text-red-500">*</span></label>
             <select
               name="role" value={form.role} onChange={handleChange} disabled={!canEditRole}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600 bg-white disabled:bg-gray-50 disabled:text-gray-500"
             >
               {ALL_ROLES.map((r) => (
                 <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -183,7 +183,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
                 value={form.userCode}
                 onChange={(e) => setForm((prev) => ({ ...prev, userCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) }))}
                 maxLength={4}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-green-600"
                 placeholder="Auto"
               />
               <button
@@ -201,7 +201,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
             <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
             <select
               name="branchId" value={form.branchId} onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600 bg-white"
             >
               <option value="">— No branch —</option>
               {branches.map((b) => (
@@ -215,7 +215,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
             <input
               name="markup" type="number" value={form.markup} onChange={handleChange}
               min={0} max={100} step={0.1}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
             />
             <p className="text-xs text-gray-400 mt-1">Applied to shipping rates for this user.</p>
           </div>
@@ -225,7 +225,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
               type="checkbox" id="isActive" name="isActive"
               checked={form.isActive}
               onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-4 h-4 text-green-700 border-gray-300 rounded focus:ring-green-600"
             />
             <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
               Active — user can log in and use the system
@@ -239,7 +239,7 @@ export default function UserForm({ user, branches, canDelete = false, canEditRol
         <div className="flex gap-3">
           <button
             type="submit" disabled={saving}
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="px-5 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50"
           >
             {saving ? "Saving…" : isEdit ? "Save Changes" : "Create User"}
           </button>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -280,7 +280,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
     }
   }
 
-  const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600";
   const labelCls = "block text-xs font-medium text-gray-600 mb-1";
 
   return (
@@ -455,7 +455,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-900">Packages</h2>
-          <button type="button" onClick={addPackage} className="text-sm text-blue-600 hover:underline">
+          <button type="button" onClick={addPackage} className="text-sm text-green-700 hover:underline">
             + Add package
           </button>
         </div>
@@ -552,8 +552,8 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
                 key={rate.rateId}
                 className={`flex items-center gap-4 p-3 border rounded-lg cursor-pointer transition-colors ${
                   selectedRate?.rateId === rate.rateId
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-blue-300"
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 hover:border-green-300"
                 }`}
               >
                 <input
@@ -561,7 +561,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
                   name="rate"
                   checked={selectedRate?.rateId === rate.rateId}
                   onChange={() => setSelectedRate(rate)}
-                  className="text-blue-600"
+                  className="text-green-700"
                 />
                 <div className="flex-1">
                   <div className="font-medium text-sm text-gray-900">
@@ -698,7 +698,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium px-8 py-2.5 rounded-lg transition-colors"
+          className="bg-green-700 hover:bg-green-800 disabled:opacity-60 text-white font-medium px-8 py-2.5 rounded-lg transition-colors"
         >
           {loading ? "Creating..." : "Create Shipment"}
         </button>

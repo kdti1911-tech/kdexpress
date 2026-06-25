@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+﻿import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export default async function AddressBookPage() {
         </div>
         <Link
           href="/address-book/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="bg-green-700 hover:bg-green-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + Add Address
         </Link>
@@ -33,7 +33,7 @@ export default async function AddressBookPage() {
           <div className="text-gray-400 text-4xl mb-3">📋</div>
           <div className="text-gray-600 font-medium">No saved addresses yet</div>
           <div className="text-gray-400 text-sm mt-1">Add addresses for frequently used shippers or receivers</div>
-          <Link href="/address-book/new" className="mt-4 inline-block text-sm text-blue-600 hover:underline">
+          <Link href="/address-book/new" className="mt-4 inline-block text-sm text-green-700 hover:underline">
             Add your first address →
           </Link>
         </div>
@@ -51,7 +51,7 @@ export default async function AddressBookPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900">{addr.name}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      addr.type === "shipper" ? "bg-blue-50 text-blue-600" : "bg-green-50 text-green-600"
+                      addr.type === "shipper" ? "bg-green-50 text-green-700" : "bg-green-50 text-green-600"
                     }`}>
                       {addr.type}
                     </span>
@@ -73,7 +73,7 @@ export default async function AddressBookPage() {
               <div className="flex gap-2 flex-shrink-0">
                 <Link
                   href={`/address-book/${addr.id}/edit`}
-                  className="text-xs text-gray-500 hover:text-blue-600 border border-gray-200 rounded px-2 py-1 transition-colors"
+                  className="text-xs text-gray-500 hover:text-green-700 border border-gray-200 rounded px-2 py-1 transition-colors"
                 >
                   Edit
                 </Link>

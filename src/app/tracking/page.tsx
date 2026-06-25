@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { SHIPMENT_STATUS_LABELS, SHIPMENT_STATUS_COLORS, formatDate, formatDateTime } from "@/lib/utils";
@@ -74,12 +74,12 @@ export default function TrackingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 py-4 px-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-green-700 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -87,7 +87,7 @@ export default function TrackingPage() {
             </div>
             <span className="font-bold text-gray-900 text-lg">KDExpress</span>
           </div>
-          <Link href="/login" className="text-sm text-blue-600 hover:underline">
+          <Link href="/login" className="text-sm text-green-700 hover:underline">
             Staff Login →
           </Link>
         </div>
@@ -106,12 +106,12 @@ export default function TrackingPage() {
             value={trackingNum}
             onChange={(e) => setTrackingNum(e.target.value)}
             placeholder="Enter tracking number (e.g. KDX...)"
-            className="flex-1 px-5 py-3.5 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm font-mono"
+            className="flex-1 px-5 py-3.5 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-green-600 bg-white shadow-sm font-mono"
           />
           <button
             type="submit"
             disabled={loading || !trackingNum.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold px-8 py-3.5 rounded-xl shadow-sm transition-colors"
+            className="bg-green-700 hover:bg-green-800 disabled:opacity-60 text-white font-semibold px-8 py-3.5 rounded-xl shadow-sm transition-colors"
           >
             {loading ? "Searching..." : "Track"}
           </button>
@@ -130,7 +130,7 @@ export default function TrackingPage() {
               className={`px-6 py-5 ${
                 result.status === "DELIVERED"
                   ? "bg-green-50 border-b border-green-100"
-                  : "bg-blue-50 border-b border-blue-100"
+                  : "bg-green-50 border-b border-green-100"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -184,7 +184,7 @@ export default function TrackingPage() {
                         key={pkg.id}
                         className={`flex items-center gap-4 p-3 rounded-lg text-sm ${
                           isSearched
-                            ? "bg-blue-50 border border-blue-200"
+                            ? "bg-green-50 border border-green-200"
                             : "bg-gray-50 border border-gray-100"
                         }`}
                       >
@@ -196,7 +196,7 @@ export default function TrackingPage() {
                             <div className="font-mono font-semibold text-gray-900">
                               {pkg.trackingNumber}
                               {isSearched && (
-                                <span className="ml-2 text-xs text-blue-600 font-sans">(this piece)</span>
+                                <span className="ml-2 text-xs text-green-700 font-sans">(this piece)</span>
                               )}
                             </div>
                           )}
@@ -231,7 +231,7 @@ export default function TrackingPage() {
                     <div className="flex flex-col items-center">
                       <div
                         className={`w-3 h-3 rounded-full flex-shrink-0 mt-0.5 ${
-                          i === 0 ? "bg-blue-500" : "bg-gray-300"
+                          i === 0 ? "bg-green-600" : "bg-gray-300"
                         }`}
                       />
                       {i < result.statusHistory.length - 1 && (
