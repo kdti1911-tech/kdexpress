@@ -275,10 +275,15 @@ export async function POST(req: NextRequest) {
           phone: normalizedPhone ? { equals: normalizedPhone } : null,
         },
       });
-      if (!existing) {
+      if (existing) {
+        await db.addressBook.update({
+          where: { id: existing.id },
+          data: { email: email || null, address, city, province, postcode, country },
+        }).catch(() => {});
+      } else {
         await db.addressBook.create({
           data: { userId: user.id, type, name: normalizedName, phone: normalizedPhone || null, email: email || null, address, city, province, postcode, country },
-        }).catch(() => {}); // ignore race-condition duplicates
+        }).catch(() => {});
       }
     };
 
