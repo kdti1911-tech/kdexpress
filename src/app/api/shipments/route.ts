@@ -264,18 +264,20 @@ export async function POST(req: NextRequest) {
       postcode: string | undefined,
       country: string,
     ) => {
-      if (!name) return;
+      const normalizedName = name.trim();
+      const normalizedPhone = phone?.trim() || undefined;
+      if (!normalizedName) return;
       const existing = await db.addressBook.findFirst({
         where: {
           userId: user.id,
           type,
-          name: { equals: name, mode: "insensitive" },
-          phone: phone ? { equals: phone, mode: "insensitive" } : null,
+          name: { equals: normalizedName, mode: "insensitive" },
+          phone: normalizedPhone ? { equals: normalizedPhone } : null,
         },
       });
       if (!existing) {
         await db.addressBook.create({
-          data: { userId: user.id, type, name, phone: phone || null, email: email || null, address, city, province, postcode, country },
+          data: { userId: user.id, type, name: normalizedName, phone: normalizedPhone || null, email: email || null, address, city, province, postcode, country },
         }).catch(() => {}); // ignore race-condition duplicates
       }
     };

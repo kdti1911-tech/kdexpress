@@ -5,8 +5,8 @@ import { z } from "zod";
 
 const saveSchema = z.object({
   type: z.enum(["shipper", "receiver"]),
-  name: z.string().min(1),
-  phone: z.string().optional(),
+  name: z.string().min(1).transform((s) => s.trim()),
+  phone: z.string().optional().transform((s) => s?.trim() || undefined),
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
   city: z.string().optional(),
