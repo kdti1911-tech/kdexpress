@@ -2,21 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, hashPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { generateUserCode } from "@/lib/utils";
+import { can } from "@/lib/permissions";
 import { z } from "zod";
 
 const createUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  phone: z.string().optional(),
-  password: z.string().min(8),
+  email: z.string().email().transform((s) => s.trim().toLowerCase()),
+  name: z.string().min(1).transform((s) => s.trim()),
+  phone: z.string().optional().transform((s) => s?.trim() || undefined),
+  password: z.string().min(6),
   role: z.enum(["ADMIN", "MANAGER", "EMPLOYEE", "DRIVER", "AGENT", "AGENT_VN", "CLIENT"]).default("CLIENT"),
+  userCode: z.string().optional().transform((s) => s?.trim().toUpperCase() || undefined),
   branchId: z.string().optional(),
   markup: z.number().min(0).max(100).default(0),
+  isActive: z.boolean().default(true),
 });
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
-  if (!user || !["ADMIN", "MANAGER"].includes(user.role)) {
+  if (!user || !can(user.role, "VIEW_USERS")) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser();
-  if (!currentUser || !["ADMIN", "MANAGER"].includes(currentUser.role)) {
+  if (!currentUser || !can(currentUser.role, "CREATE_USER")) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 
@@ -80,49 +83,47 @@ export async function POST(req: NextRequest) {
 
     const existing = await db.user.findUnique({ where: { email: data.email } });
     if (existing) {
-      return NextResponse.json(
-        { success: false, error: "Email already in use" },
-        { status: 409 }
-      );
+      return NextResponse.json({ success: false, error: "Email already in use" }, { status: 409 });
     }
 
-    // Generate unique user code
-    let userCode: string;
-    let attempts = 0;
-    do {
-      userCode = generateUserCode();
-      attempts++;
-      if (attempts > 20) throw new Error("Could not generate unique user code");
-    } while (await db.user.findUnique({ where: { userCode } }));
+    // Use provided code or auto-generate unique one
+    let userCode = data.userCode;
+    if (userCode) {
+      if (!/^[A-Z0-9]{4}$/.test(userCode)) {
+        return NextResponse.json({ success: false, error: "User code must be exactly 4 alphanumeric characters" }, { status: 400 });
+      }
+      if (await db.user.findUnique({ where: { userCode } })) {
+        return NextResponse.json({ success: false, error: "User code already in use" }, { status: 409 });
+      }
+    } else {
+      let attempts = 0;
+      do {
+        userCode = generateUserCode();
+        if (++attempts > 100) throw new Error("Could not generate unique user code");
+      } while (await db.user.findUnique({ where: { userCode } }));
+    }
 
     const user = await db.user.create({
       data: {
         email: data.email,
         name: data.name,
-        phone: data.phone,
+        phone: data.phone || null,
         passwordHash: await hashPassword(data.password),
         role: data.role,
-        branchId: data.branchId,
-        markup: data.markup,
         userCode,
+        branchId: data.branchId || null,
+        markup: data.markup,
+        isActive: data.isActive,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        userCode: true,
-      },
+      select: { id: true, email: true, name: true, role: true, userCode: true },
     });
 
     return NextResponse.json({ success: true, data: user }, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: err.errors },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Validation failed", details: err.errors }, { status: 400 });
     }
+    console.error("Create user error:", err);
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

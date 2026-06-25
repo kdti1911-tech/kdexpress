@@ -2,6 +2,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
+import { can, ROLE_LABELS, ROLE_COLORS } from "@/lib/permissions";
+import Link from "next/link";
 
 interface Props {
   searchParams: Promise<{ search?: string; role?: string; page?: string }>;
@@ -9,9 +11,10 @@ interface Props {
 
 export default async function CustomersPage({ searchParams }: Props) {
   const user = await getCurrentUser();
-  if (!user || !["ADMIN", "MANAGER", "EMPLOYEE"].includes(user.role)) {
+  if (!user || !can(user.role, "VIEW_USERS")) {
     redirect("/dashboard");
   }
+  const canCreate = can(user.role, "CREATE_USER");
 
   const params = await searchParams;
   const search = params.search ?? "";
@@ -58,16 +61,6 @@ export default async function CustomersPage({ searchParams }: Props) {
 
   const totalPages = Math.ceil(total / limit);
 
-  const roleColors: Record<string, string> = {
-    ADMIN: "bg-red-100 text-red-700",
-    MANAGER: "bg-purple-100 text-purple-700",
-    EMPLOYEE: "bg-blue-100 text-blue-700",
-    DRIVER: "bg-indigo-100 text-indigo-700",
-    AGENT: "bg-orange-100 text-orange-700",
-    AGENT_VN: "bg-yellow-100 text-yellow-700",
-    CLIENT: "bg-gray-100 text-gray-700",
-  };
-
   const roles = ["CLIENT", "AGENT", "AGENT_VN", "EMPLOYEE", "DRIVER", "MANAGER", "ADMIN"];
 
   function buildUrl(overrides: Record<string, string | undefined>) {
@@ -86,9 +79,17 @@ export default async function CustomersPage({ searchParams }: Props) {
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
         </div>
+        {canCreate && (
+          <Link
+            href="/customers/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
+            + New User
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -111,7 +112,7 @@ export default async function CustomersPage({ searchParams }: Props) {
             {roles.map((r) => (
               <a key={r} href={buildUrl({ role: r, page: "1" })}
                 className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${role === r ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-                {r}
+                {ROLE_LABELS[r as keyof typeof ROLE_LABELS] ?? r}
               </a>
             ))}
           </div>
@@ -142,31 +143,41 @@ export default async function CustomersPage({ searchParams }: Props) {
               </tr>
             ) : (
               users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
+                <tr key={u.id} className="hover:bg-gray-50 cursor-pointer">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{u.name}</div>
-                    <div className={`inline-block text-xs mt-0.5 ${!u.isActive ? "text-red-500" : "text-gray-400"}`}>
-                      {!u.isActive && "Inactive"}
-                    </div>
+                    <Link href={`/customers/${u.id}`} className="block">
+                      <div className="font-medium text-gray-900">{u.name}</div>
+                      {!u.isActive && <div className="text-xs text-red-500 mt-0.5">Inactive</div>}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    <div>{u.email}</div>
-                    {u.phone && <div className="text-gray-400 text-xs">{u.phone}</div>}
+                    <Link href={`/customers/${u.id}`} className="block">
+                      <div>{u.email}</div>
+                      {u.phone && <div className="text-gray-400 text-xs">{u.phone}</div>}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-700">
-                    {u.userCode ?? "—"}
+                    <Link href={`/customers/${u.id}`} className="block">{u.userCode ?? "—"}</Link>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColors[u.role] ?? "bg-gray-100 text-gray-700"}`}>
-                      {u.role}
-                    </span>
+                    <Link href={`/customers/${u.id}`} className="block">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role as keyof typeof ROLE_COLORS] ?? "bg-gray-100 text-gray-700"}`}>
+                        {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] ?? u.role}
+                      </span>
+                    </Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{u.branch?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-right text-gray-900">{u._count.shipmentsSender}</td>
+                  <td className="px-4 py-3 text-gray-500">
+                    <Link href={`/customers/${u.id}`} className="block">{u.branch?.name ?? "—"}</Link>
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-900">
+                    <Link href={`/customers/${u.id}`} className="block">{u._count.shipmentsSender}</Link>
+                  </td>
                   <td className="px-4 py-3 text-right text-gray-600">
-                    {u.markup > 0 ? `${u.markup}%` : "—"}
+                    <Link href={`/customers/${u.id}`} className="block">{u.markup > 0 ? `${u.markup}%` : "—"}</Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(u.createdAt)}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">
+                    <Link href={`/customers/${u.id}`} className="block">{formatDate(u.createdAt)}</Link>
+                  </td>
                 </tr>
               ))
             )}

@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
   },
   {
     href: "/customers",
-    label: "Customers",
+    label: "Users",
     roles: ["ADMIN", "MANAGER", "EMPLOYEE"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
