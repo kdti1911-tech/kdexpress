@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -19,9 +19,9 @@ type Pallet = {
   packages: PackageItem[];
 };
 
-export default function PalletScanClient({ pallet: initialPallet, manifestId }: { pallet: Pallet; manifestId: string }) {
+export default function PalletScanClient({ pallet, manifestId }: { pallet: Pallet; manifestId: string }) {
   const router = useRouter();
-  const [pallet, setPallet] = useState(initialPallet);
+  const [isPending, startTransition] = useTransition();
   const [scan, setScan] = useState("");
   const [scanning, setScanning] = useState(false);
   const [lastResult, setLastResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -30,6 +30,10 @@ export default function PalletScanClient({ pallet: initialPallet, manifestId }: 
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function refresh() {
+    startTransition(() => router.refresh());
+  }
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault();
@@ -49,8 +53,8 @@ export default function PalletScanClient({ pallet: initialPallet, manifestId }: 
     inputRef.current?.focus();
 
     if (data.success) {
-      setPallet((prev) => ({ ...prev, packages: [data.data, ...prev.packages] }));
       setLastResult({ ok: true, message: `✓ ${(data.data.package.trackingNumber ?? value).replace(/-/g, "")} — ${data.data.package.shipment.receiverName}` });
+      refresh();
     } else {
       setLastResult({ ok: false, message: `✗ ${data.error}` });
     }
@@ -65,9 +69,7 @@ export default function PalletScanClient({ pallet: initialPallet, manifestId }: 
     });
     const data = await res.json();
     setRemoving(null);
-    if (data.success) {
-      setPallet((prev) => ({ ...prev, packages: prev.packages.filter((p) => p.packageId !== packageId) }));
-    }
+    if (data.success) refresh();
   }
 
   async function toggleSeal() {
@@ -80,17 +82,27 @@ export default function PalletScanClient({ pallet: initialPallet, manifestId }: 
     });
     const data = await res.json();
     setSealing(false);
-    if (data.success) {
-      setPallet((prev) => ({ ...prev, status: newStatus }));
-      router.refresh();
-    }
+    if (data.success) refresh();
   }
 
   const totalWeight = pallet.packages.reduce((s, pp) => s + (pp.package.weight ?? 0), 0);
   const isSealed = pallet.status === "SEALED";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 relative">
+      {/* Refresh overlay */}
+      {isPending && (
+        <div className="fixed inset-0 bg-white/40 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-5 py-3 flex items-center gap-3 text-sm text-gray-600">
+            <svg className="animate-spin w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            Đang cập nhật...
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
@@ -139,7 +151,7 @@ export default function PalletScanClient({ pallet: initialPallet, manifestId }: 
 
       {/* Seal / Unseal */}
       <div className="flex gap-3">
-        <button onClick={toggleSeal} disabled={sealing}
+        <button onClick={toggleSeal} disabled={sealing || isPending}
           className={`px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50 ${isSealed ? "border border-gray-300 text-gray-700 hover:bg-gray-50" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
           {sealing ? "..." : isSealed ? "🔓 Mở Seal" : "🔒 Seal Pallet"}
         </button>
@@ -191,7 +203,7 @@ export default function PalletScanClient({ pallet: initialPallet, manifestId }: 
                     <td className="px-4 py-2.5 text-right">
                       <button
                         onClick={() => removePackage(pp.packageId)}
-                        disabled={removing === pp.packageId}
+                        disabled={removing === pp.packageId || isPending}
                         className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40"
                       >
                         {removing === pp.packageId ? "..." : "Xoá"}

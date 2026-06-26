@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -62,31 +62,29 @@ interface Props {
   totalWeight: number;
 }
 
-export default function ManifestDetailClient({ manifest: initialManifest, canManage, canUpdateStatus, totalPieces, totalWeight }: Props) {
+export default function ManifestDetailClient({ manifest, canManage, canUpdateStatus, totalPieces, totalWeight }: Props) {
   const router = useRouter();
-  const [manifest, setManifest] = useState(initialManifest);
-  const [statusLoading, setStatusLoading] = useState(false);
-  const [addingPallet, setAddingPallet] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
   const [newPalletDest, setNewPalletDest] = useState(manifest.destBranch?.name ?? "");
   const [error, setError] = useState("");
-  const [deletingManifest, setDeletingManifest] = useState(false);
-  const [deletingPallet, setDeletingPallet] = useState<string | null>(null);
+  const [addingPallet, setAddingPallet] = useState(false);
 
-  const refresh = useCallback(() => router.refresh(), [router]);
+  function refresh() {
+    startTransition(() => router.refresh());
+  }
 
   async function advanceStatus() {
     const next = NEXT_STATUS[manifest.status];
     if (!next) return;
     if (!confirm(`Chuyển lô hàng sang "${next.status}"? Trạng thái tất cả kiện sẽ được cập nhật tự động.`)) return;
-    setStatusLoading(true);
     const res = await fetch(`/api/manifests/${manifest.id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: next.status }),
     });
     const data = await res.json();
-    setStatusLoading(false);
-    if (data.success) { setManifest((prev) => ({ ...prev, status: next.status })); refresh(); }
+    if (data.success) refresh();
     else setError(data.error ?? "Lỗi");
   }
 
@@ -99,51 +97,58 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
     });
     const data = await res.json();
     setAddingPallet(false);
-    if (data.success) { refresh(); }
+    if (data.success) refresh();
     else setError(data.error ?? "Lỗi");
   }
 
   async function deleteManifest() {
     if (!confirm(`Xoá lô hàng ${manifest.code}? Tất cả pallets và dữ liệu liên quan sẽ bị xoá vĩnh viễn.`)) return;
-    setDeletingManifest(true);
     const res = await fetch(`/api/manifests/${manifest.id}`, { method: "DELETE" });
     const data = await res.json();
-    setDeletingManifest(false);
     if (data.success) { router.push("/manifests"); router.refresh(); }
     else setError(data.error ?? "Lỗi xoá manifest");
   }
 
   async function deletePallet(palletId: string, palletCode: string) {
     if (!confirm(`Xoá pallet ${palletCode}? Tất cả kiện trong pallet sẽ được bỏ ra khỏi pallet.`)) return;
-    setDeletingPallet(palletId);
     const res = await fetch(`/api/manifests/${manifest.id}/pallets/${palletId}`, { method: "DELETE" });
     const data = await res.json();
-    setDeletingPallet(null);
-    if (data.success) { refresh(); }
+    if (data.success) refresh();
     else setError(data.error ?? "Lỗi xoá pallet");
   }
 
   const next = NEXT_STATUS[manifest.status];
   const canAddPallets = canManage && ["PLANNING", "LOADING"].includes(manifest.status);
-  const pieces = totalPieces;
-  const weight = totalWeight;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 relative">
+      {/* Refresh overlay */}
+      {isPending && (
+        <div className="fixed inset-0 bg-white/40 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-5 py-3 flex items-center gap-3 text-sm text-gray-600">
+            <svg className="animate-spin w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            Đang cập nhật...
+          </div>
+        </div>
+      )}
+
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
-      {/* Stats + status */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
           <div className="text-2xl font-bold text-gray-900">{manifest.pallets.length}</div>
           <div className="text-xs text-gray-500 mt-0.5">Pallets</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">{pieces}</div>
+          <div className="text-2xl font-bold text-gray-900">{totalPieces}</div>
           <div className="text-xs text-gray-500 mt-0.5">Kiện</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <div className="text-2xl font-bold text-gray-900">{weight.toFixed(1)}</div>
+          <div className="text-2xl font-bold text-gray-900">{totalWeight.toFixed(1)}</div>
           <div className="text-xs text-gray-500 mt-0.5">kg</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
@@ -167,20 +172,20 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
         {manifest.notes && <div className="flex-1"><span className="text-gray-400 text-xs uppercase">Ghi Chú</span><div>{manifest.notes}</div></div>}
       </div>
 
-      {/* Action buttons */}
+      {/* Actions */}
       <div className="flex items-center justify-between">
         <div className="flex gap-3">
           {canUpdateStatus && next && (
-            <button onClick={advanceStatus} disabled={statusLoading}
+            <button onClick={advanceStatus} disabled={isPending}
               className={`px-5 py-2 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${next.color}`}>
-              {statusLoading ? "Đang cập nhật..." : next.label}
+              {next.label}
             </button>
           )}
         </div>
         {canManage && (
-          <button onClick={deleteManifest} disabled={deletingManifest}
+          <button onClick={deleteManifest} disabled={isPending}
             className="px-4 py-2 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50">
-            {deletingManifest ? "Đang xoá..." : "Xoá Lô Hàng"}
+            Xoá Lô Hàng
           </button>
         )}
       </div>
@@ -196,7 +201,7 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
               placeholder="Destination (e.g. HCM, HN...)"
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
             />
-            <button onClick={addPallet} disabled={addingPallet}
+            <button onClick={addPallet} disabled={addingPallet || isPending}
               className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap">
               {addingPallet ? "Đang thêm..." : "+ Thêm Pallet"}
             </button>
@@ -214,7 +219,6 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
           const palletWeight = pallet.packages.reduce((s, pp) => s + (pp.package.weight ?? 0), 0);
           return (
             <div key={pallet.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {/* Pallet header */}
               <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
                 <div className="flex items-center gap-3">
                   <span className="font-mono font-bold text-gray-900">{pallet.code}</span>
@@ -223,7 +227,7 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
                   </span>
                   {pallet.destination && <span className="text-xs text-gray-500">→ {pallet.destination}</span>}
                 </div>
-                <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-3 text-sm text-gray-500">
                   <span>{pallet.packages.length} kiện</span>
                   <span>{palletWeight.toFixed(1)} kg</span>
                   {canUpdateStatus && ["PLANNING", "LOADING"].includes(manifest.status) && (
@@ -233,18 +237,14 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
                     </Link>
                   )}
                   {canManage && (
-                    <button
-                      onClick={() => deletePallet(pallet.id, pallet.code)}
-                      disabled={deletingPallet === pallet.id}
-                      className="px-3 py-1 text-red-500 border border-red-200 rounded text-xs font-medium hover:bg-red-50 disabled:opacity-40"
-                    >
-                      {deletingPallet === pallet.id ? "..." : "Xoá"}
+                    <button onClick={() => deletePallet(pallet.id, pallet.code)} disabled={isPending}
+                      className="px-3 py-1 text-red-500 border border-red-200 rounded text-xs font-medium hover:bg-red-50 disabled:opacity-40">
+                      Xoá
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Package list */}
               {pallet.packages.length === 0 ? (
                 <div className="px-4 py-4 text-sm text-gray-400 text-center">Chưa có kiện nào trong pallet này.</div>
               ) : (
