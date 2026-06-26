@@ -206,7 +206,7 @@ export default function PalletScanClient({ pallet, manifestId }: { pallet: Palle
                         disabled={removing === pp.packageId || isPending}
                         className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40"
                       >
-                        {removing === pp.packageId ? "..." : "Xoá"}
+                        {removing === pp.packageId ? "..." : "Remove"}
                       </button>
                     </td>
                   )}
