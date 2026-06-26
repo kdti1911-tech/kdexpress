@@ -17,18 +17,13 @@ export default async function LabelPage({ params }: Params) {
           trackingNumber: true,
           totalPieces: true,
           shipperName: true,
-          shipperPhone: true,
-          shipperCity: true,
-          shipperCountry: true,
           receiverName: true,
-          receiverPhone: true,
           receiverAddress: true,
           receiverCity: true,
           receiverProvince: true,
           receiverPostcode: true,
           receiverCountry: true,
           notes: true,
-          createdAt: true,
         },
       },
     },
@@ -37,170 +32,115 @@ export default async function LabelPage({ params }: Params) {
   if (!pkg) notFound();
 
   const { shipment } = pkg;
-  const receiverLocation = [
+
+  const trackingDisplay = (pkg.trackingNumber ?? "").replace(/-/g, "");
+  const masterDisplay = shipment.trackingNumber.replace(/-/g, "");
+
+  const destination = [
     shipment.receiverAddress,
     shipment.receiverCity,
     shipment.receiverProvince,
     shipment.receiverPostcode,
+    shipment.receiverCountry,
   ]
     .filter(Boolean)
     .join(", ");
 
   const qrDataUrl = await QRCode.toDataURL(pkg.trackingNumber ?? "", {
-    width: 160,
+    width: 180,
     margin: 1,
     errorCorrectionLevel: "M",
   });
 
   return (
     <>
-      {/* Action bar — hidden when printing */}
-      <div className="print:hidden bg-gray-100 border-b border-gray-200 px-6 py-3 flex items-center gap-4 no-print">
-        <a
-          href={`/shipments/${shipment.id}`}
-          className="text-sm text-gray-600 hover:text-gray-900"
-        >
+      <style>{`
+        @media print {
+          @page { size: 4in 6in; margin: 0; }
+          body { margin: 0; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
+      {/* Action bar */}
+      <div className="no-print bg-gray-100 border-b border-gray-200 px-6 py-3 flex items-center gap-4">
+        <a href={`/shipments/${shipment.id}`} className="text-sm text-gray-600 hover:text-gray-900">
           ← Back to Shipment
         </a>
         <span className="text-gray-300">|</span>
-        <span className="text-sm text-gray-500 font-mono">{pkg.trackingNumber}</span>
+        <span className="text-sm text-gray-500 font-mono">{trackingDisplay}</span>
         <div className="ml-auto">
           <PrintButton />
         </div>
       </div>
 
-      {/* Label — centered on screen, fills page when printing */}
-      <div className="flex justify-center p-8 print:p-0 bg-white min-h-screen">
+      {/* Label */}
+      <div className="flex justify-center p-8 print:p-0 bg-gray-100 print:bg-white min-h-screen print:min-h-0">
         <div
-          className="border-2 border-black font-mono text-sm"
-          style={{ width: "4in", minHeight: "6in" }}
+          className="bg-white border-2 border-black font-sans flex flex-col"
+          style={{ width: "4in", height: "6in" }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b-2 border-black">
+          <div className="flex items-center justify-between px-3 py-2 border-b-2 border-black">
             <div>
-              <div className="text-xl font-bold tracking-tight">KD EXPRESS</div>
-              <div className="text-xs text-gray-500">kdexpress.ca</div>
+              <div className="text-lg font-black tracking-tight leading-none">KD EXPRESS</div>
+              <div className="text-[9px] text-gray-500 mt-0.5">kdexpress.ca</div>
             </div>
-            <div className="text-right text-xs">
-              <div className="text-gray-500">Master Tracking</div>
-              <div className="font-bold font-mono">{shipment.trackingNumber}</div>
-              <div className="mt-1 text-gray-500">
-                Piece {pkg.sequence} of {shipment.totalPieces}
-              </div>
+            <div className="text-right text-[10px]">
+              <div className="font-bold text-gray-500">Kiện {pkg.sequence} / {shipment.totalPieces}</div>
+              <div className="font-mono text-[9px] text-gray-400">{masterDisplay}</div>
             </div>
           </div>
 
-          {/* Child tracking + QR code */}
-          <div className="px-4 py-4 border-b-2 border-black">
-            <div className="flex items-center gap-4">
-              {/* QR code */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrDataUrl}
-                alt={pkg.trackingNumber ?? ""}
-                width={120}
-                height={120}
-                className="flex-shrink-0"
-              />
-              {/* Tracking text */}
-              <div className="flex-1 text-center">
-                <div className="text-xs text-gray-500 mb-1 uppercase tracking-widest">
-                  Piece Tracking
-                </div>
-                <div
-                  className="text-2xl font-bold leading-tight break-all"
-                  style={{ letterSpacing: "0.05em" }}
-                >
-                  {pkg.trackingNumber}
-                </div>
-                <div className="mt-3 text-sm font-bold uppercase tracking-wide bg-black text-white px-3 py-1 inline-block">
-                  {pkg.sequence} / {shipment.totalPieces}
-                </div>
+          {/* QR + Tracking number */}
+          <div className="flex items-center gap-3 px-3 py-3 border-b-2 border-black">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrDataUrl} alt={trackingDisplay} width={110} height={110} className="flex-shrink-0" />
+            <div className="flex-1 text-center">
+              <div className="text-[9px] text-gray-400 uppercase tracking-widest mb-1">Mã Vận Đơn</div>
+              <div className="text-[22px] font-black leading-tight break-all font-mono" style={{ letterSpacing: "0.04em" }}>
+                {trackingDisplay}
               </div>
             </div>
           </div>
 
           {/* From / To */}
-          <div className="grid grid-cols-2 divide-x divide-black border-b-2 border-black">
-            <div className="px-3 py-3">
-              <div className="text-xs font-bold uppercase text-gray-500 mb-2">From</div>
+          <div className="grid grid-cols-2 divide-x-2 divide-black border-b-2 border-black">
+            <div className="px-3 py-2">
+              <div className="text-[9px] font-black uppercase text-gray-400 mb-1">Người Gửi</div>
               <div className="font-bold text-sm leading-snug">{shipment.shipperName}</div>
-              {shipment.shipperCity && (
-                <div className="text-sm leading-snug">{shipment.shipperCity}</div>
-              )}
-              <div className="text-sm leading-snug">{shipment.shipperCountry}</div>
-              {shipment.shipperPhone && (
-                <div className="text-xs text-gray-500 mt-1">{shipment.shipperPhone}</div>
-              )}
             </div>
-            <div className="px-3 py-3">
-              <div className="text-xs font-bold uppercase text-gray-500 mb-2">To</div>
+            <div className="px-3 py-2">
+              <div className="text-[9px] font-black uppercase text-gray-400 mb-1">Người Nhận</div>
               <div className="font-bold text-sm leading-snug">{shipment.receiverName}</div>
-              {receiverLocation && (
-                <div className="text-sm leading-snug">{receiverLocation}</div>
-              )}
-              <div className="text-sm leading-snug">{shipment.receiverCountry}</div>
-              {shipment.receiverPhone && (
-                <div className="text-xs text-gray-500 mt-1">{shipment.receiverPhone}</div>
-              )}
             </div>
           </div>
 
-          {/* Weight / Dimensions */}
-          <div className="px-4 py-3 border-b border-gray-300 flex items-center gap-6">
-            <div>
-              <div className="text-xs text-gray-500 uppercase">Weight</div>
-              <div className="font-bold text-lg">{pkg.weight.toFixed(2)} kg</div>
+          {/* Destination */}
+          <div className="px-3 py-2 border-b-2 border-black">
+            <div className="text-[9px] font-black uppercase text-gray-400 mb-1">Địa Chỉ Giao</div>
+            <div className="text-sm font-medium leading-snug">{destination || shipment.receiverCountry}</div>
+          </div>
+
+          {/* Weight + Notes */}
+          <div className="px-3 py-2 border-b-2 border-black flex gap-6 items-start">
+            <div className="flex-shrink-0">
+              <div className="text-[9px] font-black uppercase text-gray-400 mb-1">Trọng Lượng</div>
+              <div className="text-xl font-black">{pkg.weight.toFixed(2)} <span className="text-sm font-bold">kg</span></div>
             </div>
-            {pkg.length && pkg.width && pkg.height && (
-              <div>
-                <div className="text-xs text-gray-500 uppercase">Dimensions</div>
-                <div className="font-bold">
-                  {pkg.length}×{pkg.width}×{pkg.height} cm
-                </div>
-              </div>
-            )}
-            {pkg.isFragile && (
-              <div className="ml-auto border-2 border-red-600 text-red-600 px-2 py-1 text-xs font-bold uppercase">
-                Fragile
-              </div>
-            )}
-            {pkg.isDangerous && (
-              <div className="ml-auto border-2 border-orange-600 text-orange-600 px-2 py-1 text-xs font-bold uppercase">
-                Danger
+            {shipment.notes && (
+              <div className="flex-1">
+                <div className="text-[9px] font-black uppercase text-gray-400 mb-1">Lưu Ý</div>
+                <div className="text-xs leading-snug">{shipment.notes}</div>
               </div>
             )}
           </div>
 
-          {/* Description & notes */}
-          {(pkg.description || shipment.notes) && (
-            <div className="px-4 py-3 border-b border-gray-300">
-              {pkg.description && (
-                <div className="text-xs">
-                  <span className="text-gray-500 uppercase">Contents: </span>
-                  {pkg.description}
-                </div>
-              )}
-              {shipment.notes && (
-                <div className="text-xs mt-1">
-                  <span className="text-gray-500 uppercase">Note: </span>
-                  {shipment.notes}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="px-4 py-3 text-xs text-gray-400 flex justify-between">
-            <span>
-              Created:{" "}
-              {new Date(shipment.createdAt).toLocaleDateString("en-CA", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-            <span>{shipment.trackingNumber}</span>
+          {/* Vietnamese disclaimer */}
+          <div className="mt-auto px-3 py-2 border-t border-gray-300 bg-gray-50">
+            <p className="text-[8.5px] leading-[1.45] text-gray-700">
+              <span className="font-black">Lưu Ý!</span> Quý khách vui lòng kiểm hàng ngay khi nhận hàng. Nếu thấy thùng hoặc niêm phong có dấu hiệu bất thường, xin yêu cầu nhân viên giao hàng lập biên bản ngay để được giải quyết mọi khiếu nại.
+            </p>
           </div>
         </div>
       </div>
