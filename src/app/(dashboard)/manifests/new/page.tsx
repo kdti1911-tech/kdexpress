@@ -19,7 +19,7 @@ export default async function NewManifestPage() {
       <div className="flex items-center gap-3 mb-6">
         <a href="/manifests" className="text-gray-400 hover:text-gray-600 text-sm">← Manifests</a>
         <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold text-gray-900">Tạo Lô Hàng Mới</h1>
+        <h1 className="text-xl font-bold text-gray-900">New Manifest</h1>
       </div>
       <ManifestForm branches={branches} />
     </div>

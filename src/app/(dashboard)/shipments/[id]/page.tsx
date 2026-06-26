@@ -175,7 +175,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
                             </Link>
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-300">Chưa đóng pallet</span>
+                          <span className="text-xs text-gray-300">Not palletized</span>
                         )}
                       </td>
                       <td className="py-2 text-gray-700">{pkg.description || "—"}</td>
@@ -325,7 +325,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
                 <InfoRow label="Payment Method" value={PAYMENT_METHOD_LABELS[shipment.paymentMethod] ?? shipment.paymentMethod} />
               )}
               {shipment.hazardType && shipment.hazardType !== "NONE" && (
-                <InfoRow label="Lưu Ý / Hazard" value={HAZARD_TYPE_LABELS[shipment.hazardType] ?? shipment.hazardType} />
+                <InfoRow label="Hazard" value={HAZARD_TYPE_LABELS[shipment.hazardType] ?? shipment.hazardType} />
               )}
               {shipment.deliveryMethod && (
                 <InfoRow label="Delivery" value={DELIVERY_METHOD_LABELS[shipment.deliveryMethod] ?? shipment.deliveryMethod} />

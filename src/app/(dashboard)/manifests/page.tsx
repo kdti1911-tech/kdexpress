@@ -67,11 +67,11 @@ export default async function ManifestsPage({ searchParams }: Props) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manifests</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{total} lô hàng</p>
+          <p className="text-sm text-gray-500 mt-0.5">{total} manifests</p>
         </div>
         {canCreate && (
           <Link href="/manifests/new" className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800">
-            + Tạo Lô Hàng
+            + New Manifest
           </Link>
         )}
       </div>
@@ -80,7 +80,7 @@ export default async function ManifestsPage({ searchParams }: Props) {
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
         <div className="flex gap-2 flex-wrap">
           <Link href="/manifests" className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${!status ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-            Tất cả
+            All
           </Link>
           {statuses.map((s) => (
             <Link key={s} href={`/manifests?status=${s}`}
@@ -96,19 +96,19 @@ export default async function ManifestsPage({ searchParams }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Mã Lô</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tuyến</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Vận Chuyển</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Code</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Route</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Transport</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Pallets</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Kiện</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Pieces</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">KG</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ngày Đi</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Departure</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {manifests.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">Chưa có lô hàng nào.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">No manifests found.</td></tr>
             ) : manifests.map((m) => {
               const totalPieces = m.pallets.reduce((s, p) => s + p._count.packages, 0);
               const totalWeight = m.pallets.reduce((s, p) => s + p.packages.reduce((ws, pp) => ws + (pp.package.weight ?? 0), 0), 0);
@@ -131,7 +131,7 @@ export default async function ManifestsPage({ searchParams }: Props) {
                   <td className="px-4 py-3 text-right text-gray-900">{totalPieces}</td>
                   <td className="px-4 py-3 text-right text-gray-900">{totalWeight.toFixed(1)}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
-                    {m.departureDate ? new Date(m.departureDate).toLocaleDateString("vi-VN") : "—"}
+                    {m.departureDate ? new Date(m.departureDate).toLocaleDateString("en-CA") : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[m.status] ?? "bg-gray-100 text-gray-600"}`}>
@@ -146,10 +146,10 @@ export default async function ManifestsPage({ searchParams }: Props) {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <div className="text-sm text-gray-500">Trang {page} / {totalPages}</div>
+            <div className="text-sm text-gray-500">Page {page} of {totalPages}</div>
             <div className="flex gap-2">
-              {page > 1 && <Link href={`/manifests?status=${status}&page=${page - 1}`} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">← Trước</Link>}
-              {page < totalPages && <Link href={`/manifests?status=${status}&page=${page + 1}`} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Sau →</Link>}
+              {page > 1 && <Link href={`/manifests?status=${status}&page=${page - 1}`} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">← Prev</Link>}
+              {page < totalPages && <Link href={`/manifests?status=${status}&page=${page + 1}`} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Next →</Link>}
             </div>
           </div>
         )}

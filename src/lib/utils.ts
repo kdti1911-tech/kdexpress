@@ -87,37 +87,37 @@ export const SHIPMENT_STATUS_COLORS: Record<string, string> = {
 };
 
 export const TRANSPORT_MODE_LABELS: Record<string, string> = {
-  AIR: "AIR – Hàng không",
-  SEA: "SEA – Đường biển",
-  TRUCK: "TRUCK – Xe tải",
-  LOCAL_MOVING: "LOCAL MOVING – Chuyển nhà",
-  AIR_CANADA: "AIR CANADA",
-  FAST_TRACK: "FAST TRACK",
+  AIR: "Air",
+  SEA: "Sea",
+  TRUCK: "Truck",
+  LOCAL_MOVING: "Local Moving",
+  AIR_CANADA: "Air Canada",
+  FAST_TRACK: "Fast Track",
 };
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  PENDING: "PENDING – Chưa thanh toán",
-  PAY_IN_VIETNAM: "PAY IN VIETNAM – Trả ở VN",
-  PAY_IN_CANADA: "PAY IN CANADA – Trả ở Canada",
-  PAID_OK2SHIP: "PAID – OK2SHIP",
-  CASH: "CASH – Tiền mặt",
-  ETRANSFER: "e-TRANSFER",
-  CARD: "CARD – Thẻ",
+  PENDING: "Pending",
+  PAY_IN_VIETNAM: "Pay in Vietnam",
+  PAY_IN_CANADA: "Pay in Canada",
+  PAID_OK2SHIP: "Paid (OK2SHIP)",
+  CASH: "Cash",
+  ETRANSFER: "e-Transfer",
+  CARD: "Card",
 };
 
 export const HAZARD_TYPE_LABELS: Record<string, string> = {
-  NONE: "NO – Không có",
-  BATTERY_B: "B – Pin thường",
-  BATTERY_BHV: "B-HV – Pin điện áp cao",
-  FRAGILE: "HÀNG DỄ VỠ",
-  MAGNETIC: "TỪ TÍNH",
-  LIQUID: "CHẤT LỎNG",
-  RESCUE: "HÀNG CỨU TRỢ",
+  NONE: "None",
+  BATTERY_B: "Battery (B)",
+  BATTERY_BHV: "Battery HV (B-HV)",
+  FRAGILE: "Fragile",
+  MAGNETIC: "Magnetic",
+  LIQUID: "Liquid",
+  RESCUE: "Relief Goods",
 };
 
 export const DELIVERY_METHOD_LABELS: Record<string, string> = {
-  COLLECT_AT_OFFICE: "Nhận tại văn phòng",
-  HOME_DELIVERY: "Giao tận nhà",
+  COLLECT_AT_OFFICE: "Collect at Office",
+  HOME_DELIVERY: "Home Delivery",
 };
 
 export const TRUCK_VENDOR_LABELS: Record<string, string> = {

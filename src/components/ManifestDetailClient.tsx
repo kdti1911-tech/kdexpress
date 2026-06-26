@@ -15,12 +15,12 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const NEXT_STATUS: Record<string, { label: string; status: string; color: string } | null> = {
-  PLANNING:   { label: "Bắt đầu Đóng Hàng →", status: "LOADING",    color: "bg-yellow-600 hover:bg-yellow-700" },
-  LOADING:    { label: "Seal Lô →",            status: "SEALED",     color: "bg-blue-600 hover:bg-blue-700" },
-  SEALED:     { label: "Dispatch →",           status: "DISPATCHED", color: "bg-purple-600 hover:bg-purple-700" },
-  DISPATCHED: { label: "Đang Vận Chuyển →",   status: "IN_TRANSIT", color: "bg-orange-600 hover:bg-orange-700" },
-  IN_TRANSIT: { label: "Đã Đến →",            status: "ARRIVED",    color: "bg-green-600 hover:bg-green-700" },
-  ARRIVED:    { label: "Đóng Lô →",           status: "CLOSED",     color: "bg-gray-600 hover:bg-gray-700" },
+  PLANNING:   { label: "Start Loading →",  status: "LOADING",    color: "bg-yellow-600 hover:bg-yellow-700" },
+  LOADING:    { label: "Seal →",           status: "SEALED",     color: "bg-blue-600 hover:bg-blue-700" },
+  SEALED:     { label: "Dispatch →",       status: "DISPATCHED", color: "bg-purple-600 hover:bg-purple-700" },
+  DISPATCHED: { label: "Mark In Transit →",status: "IN_TRANSIT", color: "bg-orange-600 hover:bg-orange-700" },
+  IN_TRANSIT: { label: "Mark Arrived →",   status: "ARRIVED",    color: "bg-green-600 hover:bg-green-700" },
+  ARRIVED:    { label: "Close →",          status: "CLOSED",     color: "bg-gray-600 hover:bg-gray-700" },
   CLOSED:     null,
 };
 
@@ -77,7 +77,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
   async function advanceStatus() {
     const next = NEXT_STATUS[manifest.status];
     if (!next) return;
-    if (!confirm(`Chuyển lô hàng sang "${next.status}"? Trạng thái tất cả kiện sẽ được cập nhật tự động.`)) return;
+    if (!confirm(`Advance manifest to "${next.status}"? All package statuses will be updated automatically.`)) return;
     const res = await fetch(`/api/manifests/${manifest.id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -85,7 +85,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
     });
     const data = await res.json();
     if (data.success) refresh();
-    else setError(data.error ?? "Lỗi");
+    else setError(data.error ?? "Error");
   }
 
   async function addPallet() {
@@ -98,23 +98,23 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
     const data = await res.json();
     setAddingPallet(false);
     if (data.success) refresh();
-    else setError(data.error ?? "Lỗi");
+    else setError(data.error ?? "Error");
   }
 
   async function deleteManifest() {
-    if (!confirm(`Xoá lô hàng ${manifest.code}? Tất cả pallets và dữ liệu liên quan sẽ bị xoá vĩnh viễn.`)) return;
+    if (!confirm(`Delete manifest ${manifest.code}? All pallets and related data will be permanently removed.`)) return;
     const res = await fetch(`/api/manifests/${manifest.id}`, { method: "DELETE" });
     const data = await res.json();
     if (data.success) { router.push("/manifests"); router.refresh(); }
-    else setError(data.error ?? "Lỗi xoá manifest");
+    else setError(data.error ?? "Error deleting manifest");
   }
 
   async function deletePallet(palletId: string, palletCode: string) {
-    if (!confirm(`Xoá pallet ${palletCode}? Tất cả kiện trong pallet sẽ được bỏ ra khỏi pallet.`)) return;
+    if (!confirm(`Delete pallet ${palletCode}? All packages will be removed from this pallet.`)) return;
     const res = await fetch(`/api/manifests/${manifest.id}/pallets/${palletId}`, { method: "DELETE" });
     const data = await res.json();
     if (data.success) refresh();
-    else setError(data.error ?? "Lỗi xoá pallet");
+    else setError(data.error ?? "Error deleting pallet");
   }
 
   const next = NEXT_STATUS[manifest.status];
@@ -130,7 +130,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
-            Đang cập nhật...
+            Updating...
           </div>
         </div>
       )}
@@ -145,7 +145,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
           <div className="text-2xl font-bold text-gray-900">{totalPieces}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Kiện</div>
+          <div className="text-xs text-gray-500 mt-0.5">Pieces</div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
           <div className="text-2xl font-bold text-gray-900">{totalWeight.toFixed(1)}</div>
@@ -165,11 +165,11 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
 
       {/* Info bar */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-6 text-sm">
-        <div><span className="text-gray-400 text-xs uppercase">Từ</span><div className="font-medium">{manifest.originBranch?.name ?? "—"}</div></div>
-        <div><span className="text-gray-400 text-xs uppercase">Đến</span><div className="font-medium">{manifest.destBranch?.name ?? "—"}</div></div>
-        <div><span className="text-gray-400 text-xs uppercase">Ngày Đi</span><div className="font-medium">{manifest.departureDate ? new Date(manifest.departureDate).toLocaleDateString("vi-VN") : "—"}</div></div>
-        <div><span className="text-gray-400 text-xs uppercase">Dự Kiến Đến</span><div className="font-medium">{manifest.arrivalDate ? new Date(manifest.arrivalDate).toLocaleDateString("vi-VN") : "—"}</div></div>
-        {manifest.notes && <div className="flex-1"><span className="text-gray-400 text-xs uppercase">Ghi Chú</span><div>{manifest.notes}</div></div>}
+        <div><span className="text-gray-400 text-xs uppercase">From</span><div className="font-medium">{manifest.originBranch?.name ?? "—"}</div></div>
+        <div><span className="text-gray-400 text-xs uppercase">To</span><div className="font-medium">{manifest.destBranch?.name ?? "—"}</div></div>
+        <div><span className="text-gray-400 text-xs uppercase">Departure</span><div className="font-medium">{manifest.departureDate ? new Date(manifest.departureDate).toLocaleDateString("en-CA") : "—"}</div></div>
+        <div><span className="text-gray-400 text-xs uppercase">Est. Arrival</span><div className="font-medium">{manifest.arrivalDate ? new Date(manifest.arrivalDate).toLocaleDateString("en-CA") : "—"}</div></div>
+        {manifest.notes && <div className="flex-1"><span className="text-gray-400 text-xs uppercase">Notes</span><div>{manifest.notes}</div></div>}
       </div>
 
       {/* Actions */}
@@ -185,7 +185,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
         {canManage && (
           <button onClick={deleteManifest} disabled={isPending}
             className="px-4 py-2 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50">
-            Xoá Lô Hàng
+            Delete Manifest
           </button>
         )}
       </div>
@@ -193,7 +193,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
       {/* Add Pallet */}
       {canAddPallets && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3">Thêm Pallet</h3>
+          <h3 className="font-semibold text-gray-900 mb-3">Add Pallet</h3>
           <div className="flex gap-3">
             <input
               value={newPalletDest}
@@ -203,7 +203,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
             />
             <button onClick={addPallet} disabled={addingPallet || isPending}
               className="px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 whitespace-nowrap">
-              {addingPallet ? "Đang thêm..." : "+ Thêm Pallet"}
+              {addingPallet ? "Adding..." : "+ Add Pallet"}
             </button>
           </div>
         </div>
@@ -213,7 +213,7 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
       <div className="space-y-4">
         {manifest.pallets.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
-            Chưa có pallet nào. Thêm pallet để bắt đầu đóng hàng.
+            No pallets yet. Add a pallet to start loading.
           </div>
         ) : manifest.pallets.map((pallet) => {
           const palletWeight = pallet.packages.reduce((s, pp) => s + (pp.package.weight ?? 0), 0);
@@ -228,35 +228,35 @@ export default function ManifestDetailClient({ manifest, canManage, canUpdateSta
                   {pallet.destination && <span className="text-xs text-gray-500">→ {pallet.destination}</span>}
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-500">
-                  <span>{pallet.packages.length} kiện</span>
+                  <span>{pallet.packages.length} pcs</span>
                   <span>{palletWeight.toFixed(1)} kg</span>
                   {canUpdateStatus && ["PLANNING", "LOADING"].includes(manifest.status) && (
                     <Link href={`/manifests/${manifest.id}/pallets/${pallet.id}`}
                       className="px-3 py-1 bg-green-700 text-white rounded text-xs font-medium hover:bg-green-800">
-                      + Scan Kiện
+                      + Scan
                     </Link>
                   )}
                   {canManage && (
                     <button onClick={() => deletePallet(pallet.id, pallet.code)} disabled={isPending}
                       className="px-3 py-1 text-red-500 border border-red-200 rounded text-xs font-medium hover:bg-red-50 disabled:opacity-40">
-                      Xoá
+                      Delete
                     </button>
                   )}
                 </div>
               </div>
 
               {pallet.packages.length === 0 ? (
-                <div className="px-4 py-4 text-sm text-gray-400 text-center">Chưa có kiện nào trong pallet này.</div>
+                <div className="px-4 py-4 text-sm text-gray-400 text-center">No packages in this pallet.</div>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
-                      <th className="text-left px-4 py-2">Mã Kiện</th>
+                      <th className="text-left px-4 py-2">Package #</th>
                       <th className="text-left px-4 py-2">Shipment</th>
-                      <th className="text-left px-4 py-2">Người Gửi</th>
-                      <th className="text-left px-4 py-2">Người Nhận</th>
+                      <th className="text-left px-4 py-2">Shipper</th>
+                      <th className="text-left px-4 py-2">Receiver</th>
                       <th className="text-right px-4 py-2">KG</th>
-                      <th className="text-left px-4 py-2">Mô Tả</th>
+                      <th className="text-left px-4 py-2">Description</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">

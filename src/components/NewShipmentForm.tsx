@@ -408,44 +408,44 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           <div>
             <label className={labelCls}>Transport Mode *</label>
             <select value={transportMode} onChange={e => setTransportMode(e.target.value)} className={inputCls}>
-              <option value="AIR">AIR – Hàng không</option>
-              <option value="SEA">SEA – Đường biển</option>
-              <option value="TRUCK">TRUCK – Xe tải</option>
-              <option value="LOCAL_MOVING">LOCAL MOVING – Chuyển nhà</option>
-              <option value="AIR_CANADA">AIR CANADA</option>
-              <option value="FAST_TRACK">FAST TRACK</option>
+              <option value="AIR">✈ AIR</option>
+              <option value="SEA">🚢 SEA</option>
+              <option value="TRUCK">🚛 TRUCK</option>
+              <option value="LOCAL_MOVING">📦 LOCAL MOVING</option>
+              <option value="AIR_CANADA">✈ AIR CANADA</option>
+              <option value="FAST_TRACK">⚡ FAST TRACK</option>
             </select>
           </div>
           <div>
             <label className={labelCls}>Payment Method</label>
             <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={inputCls}>
-              <option value="PENDING">PENDING – Chưa thanh toán</option>
-              <option value="PAY_IN_VIETNAM">PAY IN VIETNAM</option>
-              <option value="PAY_IN_CANADA">PAY IN CANADA</option>
-              <option value="PAID_OK2SHIP">PAID – OK2SHIP</option>
-              <option value="CASH">CASH – Tiền mặt</option>
-              <option value="ETRANSFER">e-TRANSFER</option>
-              <option value="CARD">CARD – Thẻ</option>
+              <option value="PENDING">Pending</option>
+              <option value="PAY_IN_VIETNAM">Pay in Vietnam</option>
+              <option value="PAY_IN_CANADA">Pay in Canada</option>
+              <option value="PAID_OK2SHIP">Paid (OK2SHIP)</option>
+              <option value="CASH">Cash</option>
+              <option value="ETRANSFER">e-Transfer</option>
+              <option value="CARD">Card</option>
             </select>
           </div>
           <div>
-            <label className={labelCls}>Lưu Ý / Hazard</label>
+            <label className={labelCls}>Hazard / Special</label>
             <select value={hazardType} onChange={e => setHazardType(e.target.value)} className={inputCls}>
-              <option value="NONE">NO – Không có</option>
-              <option value="BATTERY_B">B – Pin thường</option>
-              <option value="BATTERY_BHV">B-HV – Pin điện áp cao</option>
-              <option value="FRAGILE">HÀNG DỄ VỠ</option>
-              <option value="MAGNETIC">TỪ TÍNH</option>
-              <option value="LIQUID">CHẤT LỎNG</option>
-              <option value="RESCUE">HÀNG CỨU TRỢ</option>
+              <option value="NONE">None</option>
+              <option value="BATTERY_B">Battery (B)</option>
+              <option value="BATTERY_BHV">Battery HV (B-HV)</option>
+              <option value="FRAGILE">Fragile</option>
+              <option value="MAGNETIC">Magnetic</option>
+              <option value="LIQUID">Liquid</option>
+              <option value="RESCUE">Relief Goods</option>
             </select>
           </div>
           <div>
             <label className={labelCls}>Delivery Method</label>
             <select value={deliveryMethod} onChange={e => setDeliveryMethod(e.target.value)} className={inputCls}>
               <option value="">— Select —</option>
-              <option value="COLLECT_AT_OFFICE">Nhận tại văn phòng</option>
-              <option value="HOME_DELIVERY">Giao tận nhà</option>
+              <option value="COLLECT_AT_OFFICE">Collect at Office</option>
+              <option value="HOME_DELIVERY">Home Delivery</option>
             </select>
           </div>
         </div>
