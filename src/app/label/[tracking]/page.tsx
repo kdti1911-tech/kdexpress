@@ -18,12 +18,10 @@ export default async function LabelPage({ params }: Params) {
           totalPieces: true,
           shipperName: true,
           receiverName: true,
-          receiverAddress: true,
           receiverCity: true,
-          receiverProvince: true,
-          receiverPostcode: true,
           receiverCountry: true,
           notes: true,
+          destBranch: { select: { name: true } },
         },
       },
     },
@@ -36,15 +34,9 @@ export default async function LabelPage({ params }: Params) {
   const trackingDisplay = (pkg.trackingNumber ?? "").replace(/-/g, "");
   const masterDisplay = shipment.trackingNumber.replace(/-/g, "");
 
-  const destination = [
-    shipment.receiverAddress,
-    shipment.receiverCity,
-    shipment.receiverProvince,
-    shipment.receiverPostcode,
-    shipment.receiverCountry,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const destination =
+    shipment.destBranch?.name ??
+    [shipment.receiverCity, shipment.receiverCountry].filter(Boolean).join(", ");
 
   const qrDataUrl = await QRCode.toDataURL(pkg.trackingNumber ?? "", {
     width: 180,
@@ -118,8 +110,8 @@ export default async function LabelPage({ params }: Params) {
 
           {/* Destination */}
           <div className="px-3 py-2 border-b-2 border-black">
-            <div className="text-[9px] font-black uppercase text-gray-400 mb-1">Địa Chỉ Giao</div>
-            <div className="text-sm font-medium leading-snug">{destination || shipment.receiverCountry}</div>
+            <div className="text-[9px] font-black uppercase text-gray-400 mb-1">Destination</div>
+            <div className="text-base font-black leading-snug">{destination || shipment.receiverCountry}</div>
           </div>
 
           {/* Weight + Notes */}
