@@ -27,7 +27,18 @@ export default async function ShipmentDetailPage({ params }: Params) {
   const shipment = await db.shipment.findUnique({
     where: { id },
     include: {
-      packages: { orderBy: { sequence: "asc" } },
+      packages: {
+        orderBy: { sequence: "asc" },
+        include: {
+          palletItem: {
+            include: {
+              pallet: {
+                select: { id: true, code: true, manifest: { select: { id: true, code: true, status: true } } },
+              },
+            },
+          },
+        },
+      },
       statusHistory: { orderBy: { createdAt: "asc" } },
       surcharges: { include: { surcharge: true } },
       customFields: { include: { field: true } },
@@ -130,6 +141,7 @@ export default async function ShipmentDetailPage({ params }: Params) {
                   <tr className="border-b border-gray-100">
                     <th className="text-left py-2 text-xs text-gray-400 font-medium">#</th>
                     <th className="text-left py-2 text-xs text-gray-400 font-medium">Piece Tracking</th>
+                    <th className="text-left py-2 text-xs text-gray-400 font-medium">Pallet / Manifest</th>
                     <th className="text-left py-2 text-xs text-gray-400 font-medium">Description</th>
                     <th className="text-right py-2 text-xs text-gray-400 font-medium">Weight</th>
                     <th className="text-right py-2 text-xs text-gray-400 font-medium">Dimensions</th>
@@ -148,6 +160,22 @@ export default async function ShipmentDetailPage({ params }: Params) {
                           </span>
                         ) : (
                           <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="py-2">
+                        {pkg.palletItem ? (
+                          <div className="flex flex-col gap-0.5">
+                            <Link href={`/manifests/${pkg.palletItem.pallet.manifest.id}/pallets/${pkg.palletItem.pallet.id}`}
+                              className="font-mono text-xs text-green-700 hover:underline">
+                              {pkg.palletItem.pallet.code}
+                            </Link>
+                            <Link href={`/manifests/${pkg.palletItem.pallet.manifest.id}`}
+                              className="text-xs text-gray-400 hover:text-gray-600">
+                              {pkg.palletItem.pallet.manifest.code}
+                            </Link>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-300">Chưa đóng pallet</span>
                         )}
                       </td>
                       <td className="py-2 text-gray-700">{pkg.description || "—"}</td>

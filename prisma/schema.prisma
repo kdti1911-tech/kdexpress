@@ -132,6 +132,21 @@ enum NotificationStatus {
   FAILED
 }
 
+enum ManifestStatus {
+  PLANNING
+  LOADING
+  SEALED
+  DISPATCHED
+  IN_TRANSIT
+  ARRIVED
+  CLOSED
+}
+
+enum PalletStatus {
+  OPEN
+  SEALED
+}
+
 // ─── USERS & AUTH ─────────────────────────────────────────────────────────────
 
 model User {
@@ -155,6 +170,8 @@ model User {
   userGroups      UserGroupMember[]
   addressBook     AddressBook[]
   auditLogs       AuditLog[]
+  manifests       Manifest[]
+  palletPackages  PalletPackage[]
 
   @@map("users")
 }
@@ -193,9 +210,11 @@ model Branch {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  users       User[]
-  shipmentsOrigin    Shipment[] @relation("ShipmentOriginBranch")
+  users                User[]
+  shipmentsOrigin      Shipment[] @relation("ShipmentOriginBranch")
   shipmentsDestination Shipment[] @relation("ShipmentDestBranch")
+  manifestsOrigin      Manifest[] @relation("ManifestOrigin")
+  manifestsDest        Manifest[] @relation("ManifestDest")
 
   @@map("branches")
 }
@@ -481,7 +500,8 @@ model ShipmentPackage {
   isFragile      Boolean @default(false) @map("is_fragile")
   isDangerous    Boolean @default(false) @map("is_dangerous")
 
-  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  shipment    Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  palletItem  PalletPackage?
 
   @@index([trackingNumber])
   @@map("shipment_packages")
@@ -592,6 +612,69 @@ model Setting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
+}
+
+// ─── AUDIT LOGS ──────────────────────────────────────────────────────────────
+
+// ─── MANIFEST / PALLET ───────────────────────────────────────────────────────
+
+model Manifest {
+  id              String         @id @default(cuid())
+  code            String         @unique
+  status          ManifestStatus @default(PLANNING)
+  transportMode   TransportMode  @map("transport_mode")
+  originBranchId  String?        @map("origin_branch_id")
+  destBranchId    String?        @map("dest_branch_id")
+  departureDate   DateTime?      @map("departure_date")
+  arrivalDate     DateTime?      @map("arrival_date")
+  sealedAt        DateTime?      @map("sealed_at")
+  dispatchedAt    DateTime?      @map("dispatched_at")
+  arrivedAt       DateTime?      @map("arrived_at")
+  notes           String?
+  createdById     String?        @map("created_by_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  originBranch Branch? @relation("ManifestOrigin", fields: [originBranchId], references: [id])
+  destBranch   Branch? @relation("ManifestDest",   fields: [destBranchId],   references: [id])
+  createdBy    User?   @relation(fields: [createdById], references: [id])
+  pallets      Pallet[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("manifests")
+}
+
+model Pallet {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  manifestId   String       @map("manifest_id")
+  status       PalletStatus @default(OPEN)
+  destination  String?
+  sealedAt     DateTime?    @map("sealed_at")
+  notes        String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  manifest Manifest        @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+  packages PalletPackage[]
+
+  @@index([manifestId])
+  @@map("pallets")
+}
+
+model PalletPackage {
+  palletId   String   @map("pallet_id")
+  packageId  String   @unique @map("package_id")
+  addedAt    DateTime @default(now()) @map("added_at")
+  addedById  String?  @map("added_by_id")
+
+  pallet  Pallet          @relation(fields: [palletId], references: [id], onDelete: Cascade)
+  package ShipmentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  addedBy User?           @relation(fields: [addedById], references: [id])
+
+  @@id([palletId, packageId])
+  @@map("pallet_packages")
 }
 
 // ─── AUDIT LOGS ──────────────────────────────────────────────────────────────
