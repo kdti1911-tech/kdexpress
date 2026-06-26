@@ -69,6 +69,8 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
   const [addingPallet, setAddingPallet] = useState(false);
   const [newPalletDest, setNewPalletDest] = useState(manifest.destBranch?.name ?? "");
   const [error, setError] = useState("");
+  const [deletingManifest, setDeletingManifest] = useState(false);
+  const [deletingPallet, setDeletingPallet] = useState<string | null>(null);
 
   const refresh = useCallback(() => router.refresh(), [router]);
 
@@ -99,6 +101,26 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
     setAddingPallet(false);
     if (data.success) { refresh(); }
     else setError(data.error ?? "Lỗi");
+  }
+
+  async function deleteManifest() {
+    if (!confirm(`Xoá lô hàng ${manifest.code}? Tất cả pallets và dữ liệu liên quan sẽ bị xoá vĩnh viễn.`)) return;
+    setDeletingManifest(true);
+    const res = await fetch(`/api/manifests/${manifest.id}`, { method: "DELETE" });
+    const data = await res.json();
+    setDeletingManifest(false);
+    if (data.success) { router.push("/manifests"); router.refresh(); }
+    else setError(data.error ?? "Lỗi xoá manifest");
+  }
+
+  async function deletePallet(palletId: string, palletCode: string) {
+    if (!confirm(`Xoá pallet ${palletCode}? Tất cả kiện trong pallet sẽ được bỏ ra khỏi pallet.`)) return;
+    setDeletingPallet(palletId);
+    const res = await fetch(`/api/manifests/${manifest.id}/pallets/${palletId}`, { method: "DELETE" });
+    const data = await res.json();
+    setDeletingPallet(null);
+    if (data.success) { refresh(); }
+    else setError(data.error ?? "Lỗi xoá pallet");
   }
 
   const next = NEXT_STATUS[manifest.status];
@@ -146,14 +168,22 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
       </div>
 
       {/* Action buttons */}
-      {canUpdateStatus && next && (
+      <div className="flex items-center justify-between">
         <div className="flex gap-3">
-          <button onClick={advanceStatus} disabled={statusLoading}
-            className={`px-5 py-2 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${next.color}`}>
-            {statusLoading ? "Đang cập nhật..." : next.label}
-          </button>
+          {canUpdateStatus && next && (
+            <button onClick={advanceStatus} disabled={statusLoading}
+              className={`px-5 py-2 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${next.color}`}>
+              {statusLoading ? "Đang cập nhật..." : next.label}
+            </button>
+          )}
         </div>
-      )}
+        {canManage && (
+          <button onClick={deleteManifest} disabled={deletingManifest}
+            className="px-4 py-2 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50">
+            {deletingManifest ? "Đang xoá..." : "Xoá Lô Hàng"}
+          </button>
+        )}
+      </div>
 
       {/* Add Pallet */}
       {canAddPallets && (
@@ -201,6 +231,15 @@ export default function ManifestDetailClient({ manifest: initialManifest, canMan
                       className="px-3 py-1 bg-green-700 text-white rounded text-xs font-medium hover:bg-green-800">
                       + Scan Kiện
                     </Link>
+                  )}
+                  {canManage && (
+                    <button
+                      onClick={() => deletePallet(pallet.id, pallet.code)}
+                      disabled={deletingPallet === pallet.id}
+                      className="px-3 py-1 text-red-500 border border-red-200 rounded text-xs font-medium hover:bg-red-50 disabled:opacity-40"
+                    >
+                      {deletingPallet === pallet.id ? "..." : "Xoá"}
+                    </button>
                   )}
                 </div>
               </div>

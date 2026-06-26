@@ -41,9 +41,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     select: { status: true, _count: { select: { packages: true } } },
   });
   if (!pallet) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
-  if (pallet.status === "SEALED") {
-    return NextResponse.json({ success: false, error: "Cannot delete a sealed pallet" }, { status: 400 });
-  }
 
   await db.pallet.delete({ where: { id: palletId } });
   return NextResponse.json({ success: true });

@@ -99,11 +99,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
   const { id } = await params;
 
-  const manifest = await db.manifest.findUnique({ where: { id }, select: { status: true } });
+  const manifest = await db.manifest.findUnique({ where: { id } });
   if (!manifest) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
-  if (!["PLANNING", "LOADING"].includes(manifest.status)) {
-    return NextResponse.json({ success: false, error: "Can only delete manifests in PLANNING or LOADING status" }, { status: 400 });
-  }
 
   await db.manifest.delete({ where: { id } });
   return NextResponse.json({ success: true });
