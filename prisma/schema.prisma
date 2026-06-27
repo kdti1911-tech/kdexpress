@@ -684,6 +684,18 @@ model PalletPackage {
   @@map("pallet_packages")
 }
 
+// ─── ROLE PERMISSIONS ────────────────────────────────────────────────────────
+
+model RolePermission {
+  role       String
+  permission String
+  granted    Boolean  @default(true)
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@id([role, permission])
+  @@map("role_permissions")
+}
+
 // ─── USER RATES ──────────────────────────────────────────────────────────────
 
 model UserRate {
