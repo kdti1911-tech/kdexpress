@@ -1,7 +1,9 @@
-﻿import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
-import { formatCurrency, formatDate, SHIPMENT_STATUS_LABELS, SHIPMENT_STATUS_COLORS } from "@/lib/utils";
+import { SHIPMENT_STATUS_LABELS } from "@/lib/utils";
+import { can } from "@/lib/permissions";
+import ShipmentsClient from "./ShipmentsClient";
 
 interface Props {
   searchParams: Promise<{ search?: string; status?: string; page?: string }>;
@@ -18,6 +20,8 @@ export default async function ShipmentsPage({ searchParams }: Props) {
   const limit = 20;
 
   const isClient = ["CLIENT", "AGENT", "AGENT_VN"].includes(user.role);
+  const canManage = can(user.role, "MANAGE_BRANCHES");
+
   const where = {
     ...(isClient ? { senderId: user.id } : {}),
     ...(status ? { status: status as never } : {}),
@@ -95,16 +99,10 @@ export default async function ShipmentsPage({ searchParams }: Props) {
           <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
         </div>
         <div className="flex gap-2">
-          <a
-            href="/api/shipments/export"
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
+          <a href="/api/shipments/export" className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             Export CSV
           </a>
-          <Link
-            href="/shipments/new"
-            className="bg-green-700 hover:bg-green-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
+          <Link href="/shipments/new" className="bg-green-700 hover:bg-green-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             + New Shipment
           </Link>
         </div>
@@ -123,22 +121,13 @@ export default async function ShipmentsPage({ searchParams }: Props) {
             />
           </form>
           <div className="flex gap-2 flex-wrap">
-            <Link
-              href={buildUrl({ status: undefined, page: "1" })}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                !status ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
+            <Link href={buildUrl({ status: undefined, page: "1" })}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${!status ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
               All
             </Link>
-            {statuses.map((s) => (
-              <Link
-                key={s}
-                href={buildUrl({ status: s, page: "1" })}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  status === s ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
+            {statuses.map(s => (
+              <Link key={s} href={buildUrl({ status: s, page: "1" })}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${status === s ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                 {SHIPMENT_STATUS_LABELS[s]}
               </Link>
             ))}
@@ -146,197 +135,26 @@ export default async function ShipmentsPage({ searchParams }: Props) {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Tracking #
-                </th>
-                {!isClient && (
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Customer
-                  </th>
-                )}
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Shipper
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Receiver
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Mode
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Payment
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Weight
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {shipments.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={isClient ? 8 : 9}
-                    className="px-4 py-10 text-center text-gray-400"
-                  >
-                    No shipments found.
-                  </td>
-                </tr>
-              ) : (
-                shipments.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/shipments/${s.id}`}
-                        className="font-mono text-green-700 hover:underline"
-                      >
-                        {s.trackingNumber}
-                      </Link>
-                    </td>
-                    {!isClient && (
-                      <td className="px-4 py-3 text-gray-600">
-                        {s.sender ? (
-                          <span>
-                            {s.sender.name}
-                            {s.sender.userCode && (
-                              <span className="ml-1 font-mono text-xs text-gray-400">
-                                [{s.sender.userCode}]
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                    )}
-                    <td className="px-4 py-3">
-                      <div className="text-gray-900">{s.shipperName}</div>
-                      <div className="text-xs text-gray-400">
-                        {[s.shipperCity, s.shipperCountry].filter(Boolean).join(", ")}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-gray-900">{s.receiverName}</div>
-                      <div className="text-xs text-gray-400">
-                        {[s.receiverCity, s.receiverCountry].filter(Boolean).join(", ")}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          SHIPMENT_STATUS_COLORS[s.status] ?? "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {SHIPMENT_STATUS_LABELS[s.status] ?? s.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {s.transportMode ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            s.transportMode === "AIR"
-                              ? "bg-blue-100 text-blue-700"
-                              : s.transportMode === "SEA"
-                              ? "bg-cyan-100 text-cyan-700"
-                              : s.transportMode === "TRUCK"
-                              ? "bg-amber-100 text-amber-700"
-                              : s.transportMode === "LOCAL_MOVING"
-                              ? "bg-purple-100 text-purple-700"
-                              : s.transportMode === "AIR_CANADA"
-                              ? "bg-red-100 text-red-700"
-                              : s.transportMode === "FAST_TRACK"
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {s.transportMode === "AIR_CANADA"
-                            ? "AIR CA"
-                            : s.transportMode === "LOCAL_MOVING"
-                            ? "MOVING"
-                            : s.transportMode === "FAST_TRACK"
-                            ? "FAST"
-                            : s.transportMode}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {s.paymentMethod ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            s.paymentMethod === "PAID_OK2SHIP"
-                              ? "bg-green-100 text-green-700"
-                              : s.paymentMethod === "PENDING"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : s.paymentMethod === "PAY_IN_VIETNAM" || s.paymentMethod === "PAY_IN_CANADA"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {s.paymentMethod}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-600">
-                      {s.totalWeight.toFixed(2)} kg
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {formatCurrency(s.totalAmount, s.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {formatDate(s.createdAt)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <ShipmentsClient shipments={shipments} isClient={isClient} canManage={canManage} />
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <div className="text-sm text-gray-500">
-              Page {page} of {totalPages}
-            </div>
-            <div className="flex gap-2">
-              {page > 1 && (
-                <Link
-                  href={buildUrl({ page: String(page - 1) })}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
-                >
-                  Previous
-                </Link>
-              )}
-              {page < totalPages && (
-                <Link
-                  href={buildUrl({ page: String(page + 1) })}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
-                >
-                  Next
-                </Link>
-              )}
-            </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 mt-2">
+          <div className="text-sm text-gray-500">Page {page} of {totalPages}</div>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link href={buildUrl({ page: String(page - 1) })} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 bg-white">
+                Previous
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link href={buildUrl({ page: String(page + 1) })} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 bg-white">
+                Next
+              </Link>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

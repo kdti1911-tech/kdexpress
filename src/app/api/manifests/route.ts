@@ -28,11 +28,13 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status") ?? "";
+  const statusParam = searchParams.get("status") ?? "";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-  const limit = 20;
+  const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "20"));
 
-  const where = status ? { status: status as never } : {};
+  // Support comma-separated statuses: ?status=PLANNING,LOADING
+  const statuses = statusParam ? statusParam.split(",").map(s => s.trim()).filter(Boolean) : [];
+  const where = statuses.length > 0 ? { status: { in: statuses as never[] } } : {};
 
   const [manifests, total] = await Promise.all([
     db.manifest.findMany({
@@ -43,6 +45,9 @@ export async function GET(req: NextRequest) {
         _count: { select: { pallets: true } },
         pallets: {
           select: {
+            id: true,
+            palletNumber: true,
+            status: true,
             _count: { select: { packages: true } },
             packages: { select: { package: { select: { weight: true } } } },
           },
@@ -55,16 +60,17 @@ export async function GET(req: NextRequest) {
     db.manifest.count({ where }),
   ]);
 
-  const data = manifests.map((m) => {
+  const items = manifests.map((m) => {
     const totalPieces = m.pallets.reduce((sum, p) => sum + p._count.packages, 0);
     const totalWeight = m.pallets.reduce(
       (sum, p) => sum + p.packages.reduce((s, pp) => s + (pp.package.weight ?? 0), 0),
       0
     );
-    return { ...m, pallets: undefined, totalPieces, totalWeight, palletCount: m._count.pallets };
+    const pallets = m.pallets.map(p => ({ id: p.id, palletNumber: p.palletNumber, status: p.status }));
+    return { ...m, pallets, totalPieces, totalWeight, palletCount: m._count.pallets };
   });
 
-  return NextResponse.json({ success: true, data, total, page, totalPages: Math.ceil(total / limit) });
+  return NextResponse.json({ success: true, data: { items, total, page, totalPages: Math.ceil(total / limit) } });
 }
 
 export async function POST(req: NextRequest) {
