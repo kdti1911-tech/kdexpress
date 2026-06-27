@@ -30,9 +30,9 @@ type Shipment = {
 
 type Manifest = {
   id: string;
-  manifestNumber: string;
+  code: string;
   status: string;
-  pallets: { id: string; palletNumber: string; status: string }[];
+  pallets: { id: string; code: string; status: string }[];
 };
 
 type UserResult = { id: string; name: string; email: string; userCode: string | null };
@@ -390,7 +390,7 @@ export default function ShipmentsClient({
                 >
                   <option value="">— select manifest —</option>
                   {manifests.map(m => (
-                    <option key={m.id} value={m.id}>{m.manifestNumber} ({m.status})</option>
+                    <option key={m.id} value={m.id}>{m.code} ({m.status})</option>
                   ))}
                 </select>
               )}
@@ -405,7 +405,7 @@ export default function ShipmentsClient({
                 >
                   <option value="">— select pallet —</option>
                   {openPallets.map(p => (
-                    <option key={p.id} value={p.id}>{p.palletNumber}</option>
+                    <option key={p.id} value={p.id}>{p.code}</option>
                   ))}
                 </select>
                 {openPallets.length === 0 && (

@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         pallets: {
           select: {
             id: true,
-            palletNumber: true,
+            code: true,
             status: true,
             _count: { select: { packages: true } },
             packages: { select: { package: { select: { weight: true } } } },
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       (sum, p) => sum + p.packages.reduce((s, pp) => s + (pp.package.weight ?? 0), 0),
       0
     );
-    const pallets = m.pallets.map(p => ({ id: p.id, palletNumber: p.palletNumber, status: p.status }));
+    const pallets = m.pallets.map(p => ({ id: p.id, code: p.code, status: p.status }));
     return { ...m, pallets, totalPieces, totalWeight, palletCount: m._count.pallets };
   });
 
