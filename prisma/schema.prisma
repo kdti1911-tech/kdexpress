@@ -172,7 +172,10 @@ model User {
   auditLogs       AuditLog[]
   manifests       Manifest[]
   palletPackages  PalletPackage[]
+  userRate        UserRate?
 
+  @@index([phone])
+  @@index([isActive, role])
   @@map("users")
 }
 
@@ -307,16 +310,19 @@ model RateUserGroup {
 }
 
 model Surcharge {
-  id          String  @id @default(cuid())
+  id          String      @id @default(cuid())
   item        String
-  cost        Float   @default(0)
-  costType    String  @default("flat") @map("cost_type")
-  percentVal  Float   @default(0) @map("percent_val")
-  isActive    Boolean @default(true) @map("is_active")
-  sortOrder   Int     @default(0) @map("sort_order")
+  cost        Float       @default(0)
+  costType    String      @default("flat") @map("cost_type")
+  percentVal  Float       @default(0) @map("percent_val")
+  hazardType  HazardType? @map("hazard_type")
+  isActive    Boolean     @default(true) @map("is_active")
+  sortOrder   Int         @default(0) @map("sort_order")
 
   shipmentSurcharges ShipmentSurcharge[]
 
+  @@index([isActive, sortOrder])
+  @@index([hazardType])
   @@map("surcharges")
 }
 
@@ -460,6 +466,7 @@ model Shipment {
   marketingTracker  MarketingTracker? @map("marketing_tracker")
   dimensionalWeight Float?            @map("dimensional_weight")
   chargeableWeight  Float?            @map("chargeable_weight")
+  ratePerKg         Float?            @map("rate_per_kg")
   agentId           String?           @map("agent_id")
   shipmentCategory  String?           @map("shipment_category")
 
@@ -675,6 +682,22 @@ model PalletPackage {
 
   @@id([palletId, packageId])
   @@map("pallet_packages")
+}
+
+// ─── USER RATES ──────────────────────────────────────────────────────────────
+
+model UserRate {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  ratePerKg   Float    @map("rate_per_kg")
+  note        String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_rates")
 }
 
 // ─── AUDIT LOGS ──────────────────────────────────────────────────────────────

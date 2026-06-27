@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
+import RatesNav from "./RatesNav";
 
 export default async function RatesPage() {
   const user = await getCurrentUser();
@@ -24,9 +25,14 @@ export default async function RatesPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Rate Zones</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Rates</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Manage pricing by zone, customer, and cargo type</p>
+      </div>
 
-      <div className="space-y-5">
+      <RatesNav active="zones" />
+
+      <div className="space-y-5 mt-5">
         {zones.map((zone) => (
           <div key={zone.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
@@ -77,3 +83,4 @@ export default async function RatesPage() {
     </div>
   );
 }
+

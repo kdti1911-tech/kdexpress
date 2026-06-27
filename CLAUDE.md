@@ -1,183 +1,237 @@
-# KDExpress — Project Context for Claude
+# KDExpress — Tài liệu dự án cho Claude
 
-This file helps Claude Code resume work across sessions. Updated: 2026-06-26.
+File này giúp Claude Code tiếp tục làm việc giữa các phiên. Cập nhật lần cuối: 2026-06-26.
 
 ---
 
-## What This Project Is
+## Dự án là gì
 
-A full rebuild of a Vietnamese cargo/courier company's (KD Express, kdexpress.ca) shipment management system. The original was WordPress + WPCargo. This is a clean **Next.js 15 + PostgreSQL** replacement.
+Xây dựng lại từ đầu hệ thống quản lý vận chuyển của công ty chuyển phát hàng Việt Nam KD Express (kdexpress.ca). Bản cũ dùng WordPress + WPCargo. Bản mới dùng **Next.js 15 + PostgreSQL**.
 
-**Live deployment:** Railway (auto-deploys from GitHub push to `master`)  
+**Deploy:** Railway (tự động deploy khi push lên GitHub `master`)  
 **Repo:** `https://github.com/kdti1911-tech/kdexpress.git`  
-**Railway deploy command** (in `railway.toml`): `npx prisma db push && npm start`
+**Lệnh deploy Railway** (trong `railway.toml`): `npx prisma db push && npm start`
 
 ---
 
-## Tech Stack
+## Công nghệ
 
 - **Framework:** Next.js 15 App Router (server components + client components)
-- **Database:** PostgreSQL on Railway, accessed via **Prisma**
-- **Styling:** Tailwind CSS — theme is **Forest Green** (`bg-green-900` sidebar, `--primary: 142.1 70.6% 29.4%`)
-- **Auth:** Custom session-based (`src/lib/auth.ts`)
-- **No Node.js locally** — never run `npx prisma migrate dev` locally; schema changes go via Railway's `prisma db push` on deploy
+- **Database:** PostgreSQL trên Railway, truy cập qua **Prisma**
+- **Giao diện:** Tailwind CSS — theme **Forest Green** (`bg-green-900` sidebar, `--primary: 142.1 70.6% 29.4%`)
+- **Auth:** Session tự xây (`src/lib/auth.ts`)
+- **Không có Node.js local** — không chạy `npx prisma migrate dev` local; thay đổi schema qua `prisma db push` trên Railway khi deploy
 
 ---
 
-## Key Directories
+## Cấu trúc thư mục chính
 
 ```
 src/
   app/
-    (auth)/login/         Login page
-    (dashboard)/          All authenticated pages (layout wraps Sidebar)
-      dashboard/          Home dashboard
-      shipments/          Shipment list + detail + invoice + customs-invoice + label
-      manifests/          Manifest list + new + detail + pallet scan
-      customers/          User management
-      branches/           Branch management
-      rates/              Rate management
-      address-book/       Address book
+    (auth)/login/         Trang đăng nhập
+    (dashboard)/          Tất cả trang có xác thực (layout bọc Sidebar)
+      dashboard/          Trang tổng quan
+      shipments/          Danh sách + chi tiết + invoice + customs-invoice + nhãn dán
+      manifests/          Manifest list + new + chi tiết + scan pallet
+      customers/          Quản lý người dùng (+ trang chi tiết khách hàng với rate)
+      branches/           Quản lý chi nhánh
+      rates/              Quản lý bảng giá + surcharges
+      address-book/       Sổ địa chỉ
   components/
-    Sidebar.tsx           Green sidebar nav (bg-green-900)
-    NewShipmentForm.tsx   Create shipment form
-    ManifestForm.tsx      Create manifest form
-    ManifestDetailClient.tsx  Manifest detail (client, useTransition auto-refresh)
-    PalletScanClient.tsx  Pallet package scan (client, useTransition auto-refresh)
-    UpdateStatusForm.tsx  Shipment status update
-    AddressSearch.tsx     Address autocomplete
+    Sidebar.tsx               Nav sidebar màu xanh lá (bg-green-900)
+    NewShipmentForm.tsx       Form tạo shipment (có tính cước, customer picker)
+    ManifestForm.tsx          Form tạo manifest
+    ManifestDetailClient.tsx  Chi tiết manifest (client, auto-refresh useTransition)
+    PalletScanClient.tsx      Scan kiện vào pallet (client, auto-refresh useTransition)
+    UpdateStatusForm.tsx      Cập nhật trạng thái shipment
+    AddressSearch.tsx         Tìm kiếm địa chỉ tự động
   lib/
-    auth.ts               getCurrentUser(), session handling
+    auth.ts               getCurrentUser(), xử lý session
     db.ts                 Prisma client singleton
-    permissions.ts        Role-based permissions (can(role, permission))
-    utils.ts              Label maps, formatters, province lists
+    permissions.ts        Phân quyền theo role (can(role, permission))
+    utils.ts              Label maps, formatters, danh sách tỉnh thành
+    rates.ts              Tính cước: calcVolumeWeight, calcFreight, getUserRate
+    freight-config.ts     Hằng số tính cước (VOLUME_DIVISOR=6000, VOLUME_EXCESS_RATE=4)
 prisma/
   schema.prisma           Full DB schema
 ```
 
 ---
 
-## User Roles & Permissions
+## Phân quyền người dùng
 
 Roles: `ADMIN`, `MANAGER`, `EMPLOYEE`, `DRIVER`, `AGENT`, `AGENT_VN`, `CLIENT`
 
-Key permissions (from `src/lib/permissions.ts`):
+Quyền chính (từ `src/lib/permissions.ts`):
 - `VIEW_ALL_SHIPMENTS`: ADMIN, MANAGER, EMPLOYEE, AGENT, AGENT_VN, DRIVER
-- `MANAGE_BRANCHES`: ADMIN, MANAGER (used to gate manifest/pallet create/delete)
+- `MANAGE_BRANCHES`: ADMIN, MANAGER (gating tạo/xóa manifest, pallet; và quản lý rates)
 - `UPDATE_STATUS`: ADMIN, MANAGER, EMPLOYEE, DRIVER
 
 ---
 
-## Database Schema — Key Models
+## Schema DB — Các model chính
 
 ```prisma
-Shipment          # Main shipment record
-ShipmentPackage   # Individual packages (pieces) within a shipment
-StatusHistory     # Tracking history per shipment
+Shipment          # Đơn hàng chính
+ShipmentPackage   # Từng kiện hàng trong một đơn
+StatusHistory     # Lịch sử trạng thái mỗi đơn
 
-Manifest          # A shipment batch (MNF-YYYY-MM-NNN)
+Manifest          # Lô hàng (MNF-YYYY-MM-NNN)
   status: PLANNING → LOADING → SEALED → DISPATCHED → IN_TRANSIT → ARRIVED → CLOSED
-Pallet            # Pallet within a manifest (MNF-...-P001)
+Pallet            # Pallet trong manifest (MNF-...-P001)
   status: OPEN → SEALED
 PalletPackage     # Join: pallet ↔ ShipmentPackage
 
-Branch            # Office/warehouse locations
-User              # Staff/client accounts
-Rate / RateZone   # Pricing
-Surcharge         # Additional fees
-AddressEntry      # Saved addresses
-AuditLog          # System audit trail
+Branch            # Chi nhánh/kho
+User              # Nhân viên / khách hàng
+  userRate        # Rate riêng (optional) — xem UserRate
+Rate / RateZone   # Bảng giá theo vùng (hệ thống zone cũ)
+UserRate          # Rate per kg riêng cho từng agent/khách hàng (MỚI)
+Surcharge         # Phụ thu (có hazardType để tự động áp dụng)
+AddressEntry      # Địa chỉ đã lưu
+AuditLog          # Nhật ký hệ thống
 ```
 
-**Status cascade:** When manifest → DISPATCHED, all packages auto-set to `IN_TRANSIT`. When manifest → ARRIVED, all packages auto-set to `ARRIVED_DESTINATION`. (Handled in `src/app/api/manifests/[id]/status/route.ts`)
+**Cascade trạng thái:** Khi manifest → DISPATCHED, tất cả packages tự động → `IN_TRANSIT`. Khi manifest → ARRIVED, tự động → `ARRIVED_DESTINATION`. (Xử lý trong `src/app/api/manifests/[id]/status/route.ts`)
 
 ---
 
-## Manifest / Pallet System
+## Hệ thống Manifest / Pallet
 
-Built from scratch in this project. Key flows:
+Xây từ đầu. Luồng chính:
 
-1. **Create manifest** → `/manifests/new` → `POST /api/manifests` → redirects to detail page
-2. **Add pallet** → in manifest detail → `POST /api/manifests/[id]/pallets`
-3. **Scan packages into pallet** → `/manifests/[id]/pallets/[palletId]` → `POST /api/manifests/[id]/pallets/[palletId]/packages` — accepts tracking with or without dashes
-4. **Advance status** → buttons in manifest detail → `PATCH /api/manifests/[id]/status`
-5. **Delete** → no status restrictions on delete (user decision)
+1. **Tạo manifest** → `/manifests/new` → `POST /api/manifests` → redirect đến trang chi tiết
+2. **Thêm pallet** → trong trang manifest chi tiết → `POST /api/manifests/[id]/pallets`
+3. **Scan kiện vào pallet** → `/manifests/[id]/pallets/[palletId]` → `POST /api/manifests/[id]/pallets/[palletId]/packages` — chấp nhận tracking có hoặc không có dấu gạch
+4. **Cập nhật trạng thái** → các nút trong trang chi tiết → `PATCH /api/manifests/[id]/status`
+5. **Xóa** → không giới hạn theo trạng thái (quyết định của người dùng)
 
-**Auto-refresh pattern** (important — do not revert):  
-Both `ManifestDetailClient` and `PalletScanClient` use `useTransition` + `router.refresh()` instead of local state for server data:
+**Pattern auto-refresh** (quan trọng — không được revert):  
+Cả `ManifestDetailClient` và `PalletScanClient` dùng `useTransition` + `router.refresh()` thay vì local state cho server data:
 ```tsx
 const [isPending, startTransition] = useTransition();
 function refresh() { startTransition(() => router.refresh()); }
-// All mutations call refresh() on success
-// Shows loading overlay when isPending
-// Props used directly (no useState(initialProp))
+// Tất cả mutations gọi refresh() khi thành công
+// Hiện loading overlay khi isPending
+// Dùng props trực tiếp (không useState(initialProp))
 ```
 
 ---
 
-## Shipping Label
+## Hệ thống tính cước (MỚI — Session 2026-06-26)
 
-Route: `/label/[tracking]` (print-optimized, 4×6 inch)
+### Công thức
+- **Volume weight** = L × W × H (cm) ÷ **6000** (ký)
+- **Base freight** = gross_weight × rate_per_kg
+- **Volume surcharge** = max(0, volume_weight - gross_weight) × **$4/kg**
+- **Tổng cước** = base_freight + volume_surcharge
 
-- Shows: tracking number (no dashes), shipper name, receiver name, notes, weight, destination branch name
-- Does NOT show: full address, phone, dimensions
-- Bottom: Vietnamese disclaimer (intentionally stays in Vietnamese — customer-facing document)
+### Rate per agent/khách hàng
+- Model `UserRate` — rate riêng cho từng user (một bản ghi duy nhất mỗi user)
+- Nếu không có → nhân viên nhập tay khi tạo shipment
+- Quản lý tại trang `/customers/[id]` (chỉ ADMIN/MANAGER)
+
+### Phụ thu theo loại hàng
+- `Surcharge.hazardType` — gắn phụ thu với loại hàng nguy hiểm
+- Khi form tạo shipment chọn `hazardType` (Battery, Fragile...), các phụ thu khớp tự động được chọn
+
+### Trường mới trong Shipment
+- `ratePerKg` — rate đã áp dụng (để tái tính sau)
+- `dimensionalWeight` — volume weight (đã có từ trước)
+- `chargeableWeight` — gross weight (đã có từ trước)
+- `fuelSurcharge` — được tái dụng cho volume surcharge trong luồng mới
+
+### Constants (trong `src/lib/freight-config.ts`)
+```ts
+VOLUME_DIVISOR = 6000    // chia cho 6000 (không phải 5000)
+VOLUME_EXCESS_RATE = 4   // $4 CAD/kg cho phần dư volume
+```
+**Lưu ý:** `freight-config.ts` an toàn import trong client components. `rates.ts` không an toàn (dùng Prisma).
 
 ---
 
-## UI Language
+## Nhãn dán vận chuyển
 
-**All UI is in English.** This was unified in session 2026-06-26. Do not introduce Vietnamese strings in UI components. Exceptions:
-- `VIETNAM_PROVINCES` in `lib/utils.ts` — proper nouns, stay in Vietnamese
-- Shipping label disclaimer — stays in Vietnamese (customer-facing legal text)
-- Customs invoice — intentionally bilingual (English / Vietnamese) for customs purposes
+Route: `/label/[tracking]` (tối ưu in, khổ 4×6 inch)
+
+- Hiển thị: tracking number (không có gạch), tên người gửi, tên người nhận, ghi chú, cân nặng, tên chi nhánh đích
+- Không hiển thị: địa chỉ đầy đủ, số điện thoại, kích thước
+- Dưới cùng: Tuyên bố từ chối trách nhiệm tiếng Việt (giữ nguyên — tài liệu khách hàng)
+
+---
+
+## Ngôn ngữ giao diện
+
+**Toàn bộ UI dùng tiếng Anh.** Thống nhất từ session 2026-06-26. Không thêm chuỗi tiếng Việt vào UI components. Ngoại lệ:
+- `VIETNAM_PROVINCES` trong `lib/utils.ts` — danh từ riêng, giữ tiếng Việt
+- Tuyên bố từ chối trách nhiệm trên nhãn dán — giữ tiếng Việt (văn bản pháp lý khách hàng)
+- Customs invoice — song ngữ cố ý (tiếng Anh / tiếng Việt) cho mục đích hải quan
 
 ---
 
 ## Theme — Forest Green
 
-Applied globally. Key classes:
-- Sidebar: `bg-green-900`, active nav: `bg-green-700`, hover: `bg-green-800`
+Áp dụng toàn bộ. Classes chính:
+- Sidebar: `bg-green-900`, nav active: `bg-green-700`, hover: `bg-green-800`
 - Logo badge: `bg-green-600`
-- Primary buttons: `bg-green-700 hover:bg-green-800`
+- Nút chính: `bg-green-700 hover:bg-green-800`
 - Focus rings: `ring-green-600`
-- CSS var in `globals.css`: `--primary: 142.1 70.6% 29.4%`
+- CSS var trong `globals.css`: `--primary: 142.1 70.6% 29.4%`
 
 ---
 
-## API Routes Summary
+## Tóm tắt API Routes
 
 ```
-/api/shipments              GET list, POST create
-/api/shipments/[id]         GET detail, PATCH update, DELETE
-/api/shipments/[id]/status  PATCH update status
-/api/manifests              GET list (with computed totals), POST create
-/api/manifests/[id]         GET detail, PATCH update, DELETE
-/api/manifests/[id]/status  PATCH advance status (cascades to packages)
-/api/manifests/[id]/pallets               POST create pallet
-/api/manifests/[id]/pallets/[palletId]    PATCH seal/unseal, DELETE
-/api/manifests/[id]/pallets/[palletId]/packages  POST scan package, DELETE remove package
-/api/rates/calculate        POST calculate shipping rates
-/api/auth/...               Login/logout/session
+/api/shipments                    GET danh sách, POST tạo mới
+/api/shipments/[id]               GET chi tiết, PATCH cập nhật, DELETE
+/api/shipments/[id]/status        PATCH cập nhật trạng thái
+/api/manifests                    GET danh sách (với tổng hợp), POST tạo mới
+/api/manifests/[id]               GET chi tiết, PATCH cập nhật, DELETE
+/api/manifests/[id]/status        PATCH cập nhật trạng thái (cascade)
+/api/manifests/[id]/pallets                        POST tạo pallet
+/api/manifests/[id]/pallets/[palletId]             PATCH seal/unseal, DELETE
+/api/manifests/[id]/pallets/[palletId]/packages    POST scan, DELETE xóa kiện
+/api/rates/calculate              POST tính cước theo zone (hệ thống cũ)
+/api/rates/freight                POST tính cước theo công thức mới (MỚI)
+/api/rates/surcharges             GET danh sách, POST tạo
+/api/rates/surcharges/[id]        PATCH cập nhật, DELETE
+/api/users/search                 GET tìm kiếm user (dùng trong form tạo shipment)
+/api/users/[id]/rate              GET/PUT/DELETE rate riêng của user
+/api/auth/...                     Login/logout/session
 ```
 
 ---
 
-## Deployment Notes
+## Lưu ý Deploy
 
-- **No local Node.js** — cannot run `npm run dev`, `npx prisma`, etc. locally
-- Schema changes: edit `prisma/schema.prisma`, push to GitHub → Railway runs `prisma db push` automatically
-- Never use `--accept-data-loss` on prisma db push unless explicitly required and confirmed
-- Railway PostgreSQL proxy: `reseau.proxy.rlwy.net:11258` (use transiently only, do not hardcode)
+- **Không có Node.js local** — không chạy `npm run dev`, `npx prisma`, v.v. local
+- Thay đổi schema: sửa `prisma/schema.prisma`, push lên GitHub → Railway tự chạy `prisma db push`
+- Không dùng `--accept-data-loss` trừ khi thực sự cần và đã xác nhận
+- Railway PostgreSQL proxy: `reseau.proxy.rlwy.net:11258` (chỉ dùng tạm thời, không hardcode)
 
 ---
 
-## Recent Session Work (2026-06-26)
+## Công việc đã làm theo từng session
 
-1. Applied Forest Green theme across all pages
-2. Redesigned shipping label — 4×6", no dashes in tracking, Vietnamese disclaimer
-3. Fixed destination field on label — shows `destBranch.name`
-4. Built full Manifest/Pallet system — schema, API routes, all UI pages
-5. Added delete for manifests and pallets (no status restrictions)
-6. Implemented auto-refresh with `useTransition` in `ManifestDetailClient` and `PalletScanClient`
-7. Unified all UI text to English (components, pages, label maps in utils.ts)
+### Session 2026-06-26 (lần 1)
+1. Áp dụng theme Forest Green toàn bộ các trang
+2. Thiết kế lại nhãn dán — khổ 4×6", không có dấu gạch trong tracking, tuyên bố tiếng Việt
+3. Sửa lỗi trường destination trên nhãn — hiển thị `destBranch.name`
+4. Xây dựng hệ thống Manifest/Pallet đầy đủ — schema, API routes, tất cả UI
+5. Thêm tính năng xóa manifest và pallet (không giới hạn theo trạng thái)
+6. Triển khai auto-refresh với `useTransition` trong `ManifestDetailClient` và `PalletScanClient`
+7. Thống nhất toàn bộ UI text sang tiếng Anh
+
+### Session 2026-06-26 (lần 2) — Hệ thống tính cước
+1. Thêm model `UserRate` — rate riêng per user (agent/khách hàng)
+2. Thêm `hazardType` vào `Surcharge` — tự động áp dụng phụ thu theo loại hàng
+3. Thêm `ratePerKg` vào `Shipment` — lưu rate đã dùng
+4. Viết `freight-config.ts` với constants client-safe
+5. Cập nhật `rates.ts`: `calcVolumeWeight` (÷6000), `calcFreight`, `getUserRate`
+6. API mới: `/api/rates/freight`, `/api/users/search`, `/api/users/[id]/rate`
+7. API mới: `/api/rates/surcharges`, `/api/rates/surcharges/[id]`
+8. Cập nhật `NewShipmentForm`: customer picker, breakdown cước rõ ràng, hazard auto-surcharge
+9. Trang `/customers/[id]`: thêm section quản lý rate + component `UserRateForm`
+10. Trang `/rates/surcharges`: quản lý surcharges với hazard type

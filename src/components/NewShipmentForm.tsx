@@ -1,13 +1,20 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { CANADA_PROVINCES, VIETNAM_PROVINCES, formatCurrency } from "@/lib/utils";
+import { VOLUME_DIVISOR, VOLUME_EXCESS_RATE } from "@/lib/freight-config";
 import AddressSearch, { type AddressEntry } from "./AddressSearch";
 
 type Location = { id: string; name: string; slug: string };
 type Branch = { id: string; name: string; code: string };
-type Surcharge = { id: string; item: string; cost: number; costType: string };
+type Surcharge = {
+  id: string;
+  item: string;
+  cost: number;
+  costType: string;
+  hazardType: string | null;
+};
 type Package = {
   description: string;
   weight: string;
@@ -17,8 +24,16 @@ type Package = {
   value: string;
   isFragile: boolean;
 };
-
-type Rate = {
+type UserResult = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  userCode: string | null;
+  role: string;
+  userRate: { ratePerKg: number; isActive: boolean } | null;
+};
+type ZoneRate = {
   rateId: string;
   deliveryTypeId: string;
   deliveryTypeTitle: string;
@@ -49,8 +64,24 @@ const EMPTY_PACKAGE: Package = {
   isFragile: false,
 };
 
+const HAZARD_LABELS: Record<string, string> = {
+  NONE: "None",
+  BATTERY_B: "Battery (B)",
+  BATTERY_BHV: "Battery HV (B-HV)",
+  FRAGILE: "Fragile",
+  MAGNETIC: "Magnetic",
+  LIQUID: "Liquid",
+  RESCUE: "Relief Goods",
+};
+
 export default function NewShipmentForm({ locations, branches, surcharges, userBranchId }: Props) {
   const router = useRouter();
+
+  // Sender search / link
+  const [senderQuery, setSenderQuery] = useState("");
+  const [senderResults, setSenderResults] = useState<UserResult[]>([]);
+  const [selectedSender, setSelectedSender] = useState<UserResult | null>(null);
+  const [searchingUsers, setSearchingUsers] = useState(false);
 
   // Shipper
   const [shipperName, setShipperName] = useState("");
@@ -75,12 +106,18 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
   // Packages
   const [packages, setPackages] = useState<Package[]>([{ ...EMPTY_PACKAGE }]);
 
-  // Rate
+  // Freight calculation
+  const [ratePerKg, setRatePerKg] = useState("");
+  const [rateSource, setRateSource] = useState<"custom" | "manual" | "none">("none");
+
+  // Zone rate (optional carrier selection)
   const [originLocationId, setOriginLocationId] = useState(locations[0]?.id ?? "");
-  const [destLocationId, setDestLocationId] = useState(locations.find(l => l.slug.includes("vietnam"))?.id ?? locations[1]?.id ?? "");
+  const [destLocationId, setDestLocationId] = useState(
+    locations.find(l => l.slug.includes("vietnam"))?.id ?? locations[1]?.id ?? ""
+  );
   const [insuranceValue, setInsuranceValue] = useState("0");
-  const [rates, setRates] = useState<Rate[]>([]);
-  const [selectedRate, setSelectedRate] = useState<Rate | null>(null);
+  const [zoneRates, setZoneRates] = useState<ZoneRate[]>([]);
+  const [selectedZoneRate, setSelectedZoneRate] = useState<ZoneRate | null>(null);
   const [calculatingRates, setCalculatingRates] = useState(false);
   const [rateError, setRateError] = useState("");
 
@@ -89,8 +126,6 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
   const [notes, setNotes] = useState("");
   const [originBranchId, setOriginBranchId] = useState(userBranchId ?? "");
   const [pickupDate, setPickupDate] = useState("");
-
-  // Business-specific fields
   const [transportMode, setTransportMode] = useState("AIR");
   const [paymentMethod, setPaymentMethod] = useState("PENDING");
   const [hazardType, setHazardType] = useState("NONE");
@@ -104,26 +139,115 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  const totalWeight = packages.reduce((sum, p) => sum + (parseFloat(p.weight) || 0), 0);
+  // ── Computed weights (memoized — only recalc when packages change) ──────────
+  const grossWeight = useMemo(
+    () => packages.reduce((sum, p) => sum + (parseFloat(p.weight) || 0), 0),
+    [packages]
+  );
 
-  // Dim weight per package: L×W×H / 5000 (standard air formula)
-  const totalDimWeight = packages.reduce((sum, p) => {
-    const l = parseFloat(p.length) || 0;
-    const w = parseFloat(p.width) || 0;
-    const h = parseFloat(p.height) || 0;
-    return sum + (l * w * h > 0 ? (l * w * h) / 5000 : 0);
-  }, 0);
-  const chargeableWeight = Math.max(totalWeight, totalDimWeight);
+  const volumeWeight = useMemo(
+    () => packages.reduce((sum, p) => {
+      const l = parseFloat(p.length) || 0;
+      const w = parseFloat(p.width) || 0;
+      const h = parseFloat(p.height) || 0;
+      return l > 0 && w > 0 && h > 0 ? sum + (l * w * h) / VOLUME_DIVISOR : sum;
+    }, 0),
+    [packages]
+  );
 
-  function addPackage() {
-    setPackages([...packages, { ...EMPTY_PACKAGE }]);
+  const rate = parseFloat(ratePerKg) || 0;
+
+  const { baseFreight, volumeExcess, volumeSurcharge, totalFreight } = useMemo(() => {
+    if (rate <= 0) return { baseFreight: 0, volumeExcess: 0, volumeSurcharge: 0, totalFreight: 0 };
+    const base = parseFloat((grossWeight * rate).toFixed(2));
+    const excess = Math.max(0, volumeWeight - grossWeight);
+    const volSurch = parseFloat((excess * VOLUME_EXCESS_RATE).toFixed(2));
+    return { baseFreight: base, volumeExcess: excess, volumeSurcharge: volSurch, totalFreight: parseFloat((base + volSurch).toFixed(2)) };
+  }, [grossWeight, volumeWeight, rate]);
+
+  // O(1) surcharge lookup Maps — surcharges prop is stable after mount
+  const surchargeMap = useMemo(
+    () => new Map(surcharges.map(s => [s.id, s])),
+    [surcharges]
+  );
+  const hazardSurchargeMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const s of surcharges) {
+      if (s.hazardType) {
+        const ids = m.get(s.hazardType) ?? [];
+        ids.push(s.id);
+        m.set(s.hazardType, ids);
+      }
+    }
+    return m;
+  }, [surcharges]);
+
+  // Manual surcharges cost (from selected checkboxes)
+  const manualSurchargesTotal = useMemo(
+    () => selectedSurcharges.reduce((sum, id) => sum + (surchargeMap.get(id)?.cost ?? 0), 0),
+    [selectedSurcharges, surchargeMap]
+  );
+
+  // ── Auto-apply surcharges by hazard type ────────────────────────────────────
+  useEffect(() => {
+    if (hazardType && hazardType !== "NONE") {
+      const matching = hazardSurchargeMap.get(hazardType) ?? [];
+      if (matching.length > 0) {
+        setSelectedSurcharges(prev => Array.from(new Set([...prev, ...matching])));
+      }
+    }
+  }, [hazardType, hazardSurchargeMap]);
+
+  // ── User search ─────────────────────────────────────────────────────────────
+  const searchUsers = useCallback(async (q: string) => {
+    if (q.length < 1) { setSenderResults([]); return; }
+    setSearchingUsers(true);
+    try {
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.success) setSenderResults(data.data);
+    } finally {
+      setSearchingUsers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => searchUsers(senderQuery), 300);
+    return () => clearTimeout(t);
+  }, [senderQuery, searchUsers]);
+
+  function selectSender(u: UserResult) {
+    setSelectedSender(u);
+    setSenderQuery("");
+    setSenderResults([]);
+    // Fill shipper fields
+    setShipperName(u.name);
+    setShipperPhone(u.phone ?? "");
+    setShipperEmail(u.email ?? "");
+    // Apply their rate if available
+    if (u.userRate?.isActive && u.userRate.ratePerKg > 0) {
+      setRatePerKg(String(u.userRate.ratePerKg));
+      setRateSource("custom");
+    } else {
+      setRateSource("none");
+    }
   }
 
+  function clearSender() {
+    setSelectedSender(null);
+    setSenderQuery("");
+    if (rateSource === "custom") {
+      setRatePerKg("");
+      setRateSource("none");
+    }
+  }
+
+  // ── Package helpers ──────────────────────────────────────────────────────────
+  function addPackage() { setPackages([...packages, { ...EMPTY_PACKAGE }]); }
   function removePackage(i: number) {
     if (packages.length === 1) return;
     setPackages(packages.filter((_, idx) => idx !== i));
   }
-
   function updatePackage(i: number, field: keyof Package, value: string | boolean) {
     const updated = [...packages];
     updated[i] = { ...updated[i], [field]: value };
@@ -152,29 +276,18 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
     setReceiverCountry(entry.country ?? "VN");
   }
 
-  async function handleCalculateRates() {
-    if (!originLocationId || !destLocationId) {
-      setRateError("Select origin and destination locations");
-      return;
-    }
-    if (totalWeight <= 0) {
-      setRateError("Add at least one package with weight");
-      return;
-    }
-    setRateError("");
-    setCalculatingRates(true);
-    setRates([]);
-    setSelectedRate(null);
-
+  // ── Zone rate calculator (optional) ─────────────────────────────────────────
+  async function handleCalculateZoneRates() {
+    if (!originLocationId || !destLocationId) { setRateError("Select origin and destination"); return; }
+    if (grossWeight <= 0) { setRateError("Add at least one package with weight"); return; }
+    setRateError(""); setCalculatingRates(true); setZoneRates([]); setSelectedZoneRate(null);
     try {
       const res = await fetch("/api/rates/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          originLocationId,
-          destLocationId,
-          weight: totalWeight,
-          packages: packages.map((p) => ({
+          originLocationId, destLocationId, weight: grossWeight,
+          packages: packages.map(p => ({
             weight: parseFloat(p.weight) || 0,
             length: parseFloat(p.length) || undefined,
             width: parseFloat(p.width) || undefined,
@@ -184,49 +297,37 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         }),
       });
       const data = await res.json();
-      if (!data.success) {
-        setRateError(data.error ?? "Rate calculation failed");
-        return;
-      }
-      setRates(data.data);
-      if (data.data.length === 0) {
-        setRateError("No rates available for this route");
-      }
-    } catch {
-      setRateError("Network error");
-    } finally {
-      setCalculatingRates(false);
-    }
+      if (!data.success) { setRateError(data.error ?? "Rate calculation failed"); return; }
+      setZoneRates(data.data);
+      if (data.data.length === 0) setRateError("No rates available for this route");
+    } catch { setRateError("Network error"); }
+    finally { setCalculatingRates(false); }
   }
 
+  // ── Submit ───────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setValidationErrors({});
-    setLoading(true);
+    setError(""); setValidationErrors({}); setLoading(true);
 
     try {
+      // Use freight calc values if rate is set, else fall back to zone rate
+      const useFreightCalc = rate > 0;
+      const finalBaseRate = useFreightCalc ? baseFreight : (selectedZoneRate?.baseRate ?? 0);
+      const finalFuelSurcharge = useFreightCalc ? volumeSurcharge : (selectedZoneRate?.fuelSurcharge ?? 0);
+      const finalInsuranceAmount = selectedZoneRate?.insuranceAmount ?? 0;
+      const finalTotal = useFreightCalc
+        ? totalFreight + manualSurchargesTotal + finalInsuranceAmount
+        : (selectedZoneRate?.totalAmount ?? 0) + manualSurchargesTotal;
+
       const res = await fetch("/api/shipments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          shipperName,
-          shipperPhone,
-          shipperEmail,
-          shipperAddress,
-          shipperCity,
-          shipperProvince,
-          shipperPostcode,
-          shipperCountry,
-          receiverName,
-          receiverPhone,
-          receiverEmail,
-          receiverAddress,
-          receiverCity,
-          receiverProvince,
-          receiverPostcode,
-          receiverCountry,
-          packages: packages.map((p) => ({
+          shipperName, shipperPhone, shipperEmail, shipperAddress,
+          shipperCity, shipperProvince, shipperPostcode, shipperCountry,
+          receiverName, receiverPhone, receiverEmail, receiverAddress,
+          receiverCity, receiverProvince, receiverPostcode, receiverCountry,
+          packages: packages.map(p => ({
             description: p.description || undefined,
             weight: parseFloat(p.weight) || 0,
             length: parseFloat(p.length) || undefined,
@@ -235,11 +336,12 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
             value: parseFloat(p.value) || undefined,
             isFragile: p.isFragile,
           })),
-          rateId: selectedRate?.rateId,
-          deliveryTypeId: selectedRate?.deliveryTypeId,
-          baseRate: selectedRate?.baseRate ?? 0,
-          fuelSurcharge: selectedRate?.fuelSurcharge ?? 0,
-          insuranceAmount: selectedRate?.insuranceAmount ?? 0,
+          senderId: selectedSender?.id,
+          rateId: selectedZoneRate?.rateId,
+          deliveryTypeId: selectedZoneRate?.deliveryTypeId,
+          baseRate: finalBaseRate,
+          fuelSurcharge: finalFuelSurcharge,
+          insuranceAmount: finalInsuranceAmount,
           insuranceValue: parseFloat(insuranceValue) || 0,
           surchargeIds: selectedSurcharges,
           notes: notes || undefined,
@@ -253,8 +355,9 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           truckCost: truckCost ? parseFloat(truckCost) : undefined,
           marketingTracker: marketingTracker || undefined,
           shipmentCategory: shipmentCategory || undefined,
-          dimensionalWeight: totalDimWeight > 0 ? parseFloat(totalDimWeight.toFixed(2)) : undefined,
-          chargeableWeight: parseFloat(chargeableWeight.toFixed(2)),
+          dimensionalWeight: volumeWeight > 0 ? parseFloat(volumeWeight.toFixed(3)) : undefined,
+          chargeableWeight: parseFloat(grossWeight.toFixed(2)),
+          ratePerKg: rate > 0 ? rate : undefined,
         }),
       });
       const data = await res.json();
@@ -270,14 +373,10 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         }
         return;
       }
-
       router.push(`/shipments/${data.data.id}`);
       router.refresh();
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Network error. Please try again."); }
+    finally { setLoading(false); }
   }
 
   const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600";
@@ -285,7 +384,70 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Addresses */}
+
+      {/* ── Sender / Customer Link ────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="font-semibold text-gray-900 mb-3">Customer / Agent</h2>
+        {selectedSender ? (
+          <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex-1">
+              <div className="font-medium text-green-900">{selectedSender.name}</div>
+              <div className="text-xs text-green-600">
+                {selectedSender.userCode && <span className="mr-2">#{selectedSender.userCode}</span>}
+                {selectedSender.email}
+                {selectedSender.phone && <span className="ml-2">{selectedSender.phone}</span>}
+              </div>
+              {selectedSender.userRate?.isActive ? (
+                <div className="text-xs text-green-700 mt-1 font-medium">
+                  Custom rate: {formatCurrency(selectedSender.userRate.ratePerKg)}/kg
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 mt-1">No custom rate — enter rate manually</div>
+              )}
+            </div>
+            <button type="button" onClick={clearSender} className="text-xs text-gray-400 hover:text-red-500">
+              Change
+            </button>
+          </div>
+        ) : (
+          <div className="relative">
+            <input
+              value={senderQuery}
+              onChange={e => setSenderQuery(e.target.value)}
+              className={inputCls}
+              placeholder="Search by name, email, code, phone..."
+            />
+            {searchingUsers && (
+              <div className="absolute right-3 top-2.5 text-xs text-gray-400">Searching...</div>
+            )}
+            {senderResults.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg divide-y divide-gray-100 max-h-56 overflow-auto">
+                {senderResults.map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => selectSender(u)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-green-50 text-sm"
+                  >
+                    <div className="font-medium text-gray-900">{u.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {u.userCode && <span className="mr-1">#{u.userCode}</span>}
+                      {u.email}
+                      {u.userRate?.isActive && (
+                        <span className="ml-2 text-green-600 font-medium">
+                          Rate: {formatCurrency(u.userRate.ratePerKg)}/kg
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Addresses ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-5">
         {/* Shipper */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -299,7 +461,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Phone</label>
-                <input value={shipperPhone} onChange={e => setShipperPhone(e.target.value)} className={inputCls} placeholder="+1 416 555 0000" />
+                <input value={shipperPhone} onChange={e => setShipperPhone(e.target.value)} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Email</label>
@@ -337,7 +499,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
               </div>
               <div>
                 <label className={labelCls}>Postal Code</label>
-                <input value={shipperPostcode} onChange={e => setShipperPostcode(e.target.value)} className={inputCls} placeholder="M5H 2N2" />
+                <input value={shipperPostcode} onChange={e => setShipperPostcode(e.target.value)} className={inputCls} />
               </div>
             </div>
           </div>
@@ -355,7 +517,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Phone</label>
-                <input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} className={inputCls} placeholder="+84 90 000 0000" />
+                <input value={receiverPhone} onChange={e => setReceiverPhone(e.target.value)} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Email</label>
@@ -401,19 +563,19 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         </div>
       </div>
 
-      {/* Shipment Info */}
+      {/* ── Shipment Info ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="font-semibold text-gray-900 mb-4">Shipment Info</h2>
         <div className="grid grid-cols-4 gap-3">
           <div>
             <label className={labelCls}>Transport Mode *</label>
             <select value={transportMode} onChange={e => setTransportMode(e.target.value)} className={inputCls}>
-              <option value="AIR">✈ AIR</option>
-              <option value="SEA">🚢 SEA</option>
-              <option value="TRUCK">🚛 TRUCK</option>
-              <option value="LOCAL_MOVING">📦 LOCAL MOVING</option>
-              <option value="AIR_CANADA">✈ AIR CANADA</option>
-              <option value="FAST_TRACK">⚡ FAST TRACK</option>
+              <option value="AIR">AIR</option>
+              <option value="SEA">SEA</option>
+              <option value="TRUCK">TRUCK</option>
+              <option value="LOCAL_MOVING">LOCAL MOVING</option>
+              <option value="AIR_CANADA">AIR CANADA</option>
+              <option value="FAST_TRACK">FAST TRACK</option>
             </select>
           </div>
           <div>
@@ -431,13 +593,9 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           <div>
             <label className={labelCls}>Hazard / Special</label>
             <select value={hazardType} onChange={e => setHazardType(e.target.value)} className={inputCls}>
-              <option value="NONE">None</option>
-              <option value="BATTERY_B">Battery (B)</option>
-              <option value="BATTERY_BHV">Battery HV (B-HV)</option>
-              <option value="FRAGILE">Fragile</option>
-              <option value="MAGNETIC">Magnetic</option>
-              <option value="LIQUID">Liquid</option>
-              <option value="RESCUE">Relief Goods</option>
+              {Object.entries(HAZARD_LABELS).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -451,7 +609,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         </div>
       </div>
 
-      {/* Packages */}
+      {/* ── Packages ─────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-900">Packages</h2>
@@ -497,22 +655,157 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
               </div>
             </div>
           ))}
-          <div className="text-sm text-gray-500">
-            Total: <strong>{totalWeight.toFixed(2)} kg</strong> · {packages.length} piece(s)
-          </div>
-          {totalDimWeight > 0 && (
-            <div className="text-sm text-gray-500">
-              Dim weight: <strong>{totalDimWeight.toFixed(2)} kg</strong>
-              {" · "}Chargeable: <strong className={chargeableWeight > totalWeight ? "text-orange-600" : "text-gray-900"}>{chargeableWeight.toFixed(2)} kg</strong>
-              {chargeableWeight > totalWeight && <span className="ml-1 text-xs text-orange-500">(dim weight applies)</span>}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Rate Calculator */}
+      {/* ── Freight Calculation ───────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="font-semibold text-gray-900 mb-4">Shipping Rate</h2>
+        <h2 className="font-semibold text-gray-900 mb-4">Freight Calculation</h2>
+
+        {/* Rate input */}
+        <div className="flex items-end gap-4 mb-4">
+          <div className="w-48">
+            <label className={labelCls}>
+              Rate per kg (CAD)
+              {rateSource === "custom" && (
+                <span className="ml-1 text-green-600 font-normal">(custom rate)</span>
+              )}
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={ratePerKg}
+              onChange={e => { setRatePerKg(e.target.value); setRateSource("manual"); }}
+              className={inputCls}
+              placeholder="e.g. 5.50"
+            />
+          </div>
+          {!selectedSender && (
+            <p className="text-xs text-gray-400 pb-2">
+              Select a customer above to auto-load their rate.
+            </p>
+          )}
+        </div>
+
+        {/* Weight breakdown */}
+        <div className="rounded-lg bg-gray-50 border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gray-100">
+              <tr>
+                <td className="px-4 py-2.5 text-gray-500 w-48">Gross Weight</td>
+                <td className="px-4 py-2.5 font-semibold text-gray-900">
+                  {grossWeight.toFixed(2)} kg
+                </td>
+                <td className="px-4 py-2.5 text-xs text-gray-400">Actual weight of all packages</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2.5 text-gray-500">Volume Weight</td>
+                <td className="px-4 py-2.5 font-semibold text-gray-900">
+                  {volumeWeight > 0 ? (
+                    <span className={volumeWeight > grossWeight ? "text-orange-600" : ""}>
+                      {volumeWeight.toFixed(3)} kg
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-xs text-gray-400">
+                  L × W × H (cm) ÷ {VOLUME_DIVISOR}
+                  {volumeWeight > grossWeight && (
+                    <span className="ml-1 text-orange-500 font-medium">vol &gt; gross — excess applies</span>
+                  )}
+                </td>
+              </tr>
+              {rate > 0 && (
+                <>
+                  <tr className="bg-white">
+                    <td className="px-4 py-2.5 text-gray-500">Base Freight</td>
+                    <td className="px-4 py-2.5 font-semibold text-gray-900">
+                      {formatCurrency(baseFreight)}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-gray-400">
+                      {grossWeight.toFixed(2)} kg × {formatCurrency(rate)}/kg
+                    </td>
+                  </tr>
+                  <tr className="bg-white">
+                    <td className="px-4 py-2.5 text-gray-500">Volume Surcharge</td>
+                    <td className="px-4 py-2.5 font-semibold text-gray-900">
+                      {volumeSurcharge > 0 ? (
+                        <span className="text-orange-600">{formatCurrency(volumeSurcharge)}</span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-gray-400">
+                      {volumeSurcharge > 0
+                        ? `${volumeExcess.toFixed(3)} kg excess × $${VOLUME_EXCESS_RATE}/kg`
+                        : "No volumetric excess"}
+                    </td>
+                  </tr>
+                  {manualSurchargesTotal > 0 && (
+                    <tr className="bg-white">
+                      <td className="px-4 py-2.5 text-gray-500">Additional Surcharges</td>
+                      <td className="px-4 py-2.5 font-semibold text-gray-900">{formatCurrency(manualSurchargesTotal)}</td>
+                      <td className="px-4 py-2.5 text-xs text-gray-400">{selectedSurcharges.length} item(s) selected</td>
+                    </tr>
+                  )}
+                  <tr className="bg-green-50">
+                    <td className="px-4 py-3 font-semibold text-gray-800">Total Freight</td>
+                    <td className="px-4 py-3 font-bold text-lg text-green-800">
+                      {formatCurrency(totalFreight + manualSurchargesTotal)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-400">CAD</td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Surcharges ────────────────────────────────────────────────────── */}
+      {surcharges.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-900 mb-3">Additional Surcharges</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {surcharges.map((s) => {
+              const isAutoApplied = s.hazardType && s.hazardType === hazardType && hazardType !== "NONE";
+              return (
+                <label
+                  key={s.id}
+                  className={`flex items-center gap-2 text-sm cursor-pointer px-2 py-1.5 rounded ${
+                    isAutoApplied ? "bg-orange-50 text-orange-800" : "text-gray-700"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSurcharges.includes(s.id)}
+                    onChange={e =>
+                      setSelectedSurcharges(
+                        e.target.checked
+                          ? [...selectedSurcharges, s.id]
+                          : selectedSurcharges.filter(id => id !== s.id)
+                      )
+                    }
+                    className="rounded"
+                  />
+                  <span className="flex-1 truncate">{s.item}</span>
+                  {isAutoApplied && <span className="text-xs text-orange-500">auto</span>}
+                  <span className="text-gray-400 text-xs flex-shrink-0">+{formatCurrency(s.cost)}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Optional: Zone/Carrier Rate ──────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900">Carrier Rate (Optional)</h2>
+          <span className="text-xs text-gray-400">Used if no freight rate above is set</span>
+        </div>
         <div className="grid grid-cols-4 gap-3 mb-4">
           <div>
             <label className={labelCls}>Origin Location</label>
@@ -533,89 +826,50 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           <div className="flex items-end">
             <button
               type="button"
-              onClick={handleCalculateRates}
-              disabled={calculatingRates || totalWeight <= 0}
+              onClick={handleCalculateZoneRates}
+              disabled={calculatingRates || grossWeight <= 0}
               className="w-full bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
-              {calculatingRates ? "Calculating..." : "Calculate Rates"}
+              {calculatingRates ? "Calculating..." : "Calculate"}
             </button>
           </div>
         </div>
-
         {rateError && <div className="text-sm text-red-600 mb-3">{rateError}</div>}
-
-        {rates.length > 0 && (
+        {zoneRates.length > 0 && (
           <div className="space-y-2">
-            <div className="text-xs font-medium text-gray-500 uppercase mb-2">Select a rate:</div>
-            {rates.map((rate) => (
+            {zoneRates.map(rate => (
               <label
                 key={rate.rateId}
                 className={`flex items-center gap-4 p-3 border rounded-lg cursor-pointer transition-colors ${
-                  selectedRate?.rateId === rate.rateId
+                  selectedZoneRate?.rateId === rate.rateId
                     ? "border-green-500 bg-green-50"
                     : "border-gray-200 hover:border-green-300"
                 }`}
               >
                 <input
                   type="radio"
-                  name="rate"
-                  checked={selectedRate?.rateId === rate.rateId}
-                  onChange={() => setSelectedRate(rate)}
+                  name="zoneRate"
+                  checked={selectedZoneRate?.rateId === rate.rateId}
+                  onChange={() => setSelectedZoneRate(rate)}
                   className="text-green-700"
                 />
                 <div className="flex-1">
-                  <div className="font-medium text-sm text-gray-900">
-                    {rate.deliveryTypeTitle}
-                    {rate.service && <span className="text-gray-500 ml-2 text-xs">· {rate.service}</span>}
+                  <div className="font-medium text-sm">{rate.deliveryTypeTitle}
+                    {rate.service && <span className="text-gray-400 ml-1 text-xs">· {rate.service}</span>}
                   </div>
                   <div className="text-xs text-gray-400">
                     Base: {formatCurrency(rate.baseRate)} + Fuel: {formatCurrency(rate.fuelSurcharge)}
                     {rate.insuranceAmount > 0 && ` + Insurance: ${formatCurrency(rate.insuranceAmount)}`}
                   </div>
                 </div>
-                <div className="text-lg font-bold text-gray-900">
-                  {formatCurrency(rate.totalAmount, rate.currency)}
-                </div>
+                <div className="text-lg font-bold">{formatCurrency(rate.totalAmount, rate.currency)}</div>
               </label>
             ))}
-          </div>
-        )}
-
-        {selectedRate && (
-          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-            Selected: <strong>{selectedRate.deliveryTypeTitle}</strong> — {formatCurrency(selectedRate.totalAmount, selectedRate.currency)}
           </div>
         )}
       </div>
 
-      {/* Surcharges */}
-      {surcharges.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-900 mb-3">Additional Services / Surcharges</h2>
-          <div className="grid grid-cols-3 gap-2">
-            {surcharges.map((s) => (
-              <label key={s.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedSurcharges.includes(s.id)}
-                  onChange={(e) =>
-                    setSelectedSurcharges(
-                      e.target.checked
-                        ? [...selectedSurcharges, s.id]
-                        : selectedSurcharges.filter((id) => id !== s.id)
-                    )
-                  }
-                  className="rounded"
-                />
-                <span className="flex-1 truncate">{s.item}</span>
-                <span className="text-gray-400 text-xs flex-shrink-0">+{formatCurrency(s.cost)}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Logistics */}
+      {/* ── Logistics ─────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="font-semibold text-gray-900 mb-4">Logistics</h2>
         <div className="grid grid-cols-4 gap-3">
@@ -637,7 +891,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           </div>
           <div>
             <label className={labelCls}>Category</label>
-            <input value={shipmentCategory} onChange={e => setShipmentCategory(e.target.value)} className={inputCls} placeholder="e.g. Electronics, Clothing" />
+            <input value={shipmentCategory} onChange={e => setShipmentCategory(e.target.value)} className={inputCls} placeholder="e.g. Electronics" />
           </div>
           <div>
             <label className={labelCls}>Marketing Source</label>
@@ -652,7 +906,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
         </div>
       </div>
 
-      {/* Other info */}
+      {/* ── Additional Info ───────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="font-semibold text-gray-900 mb-4">Additional Info</h2>
         <div className="grid grid-cols-3 gap-4">
@@ -682,9 +936,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
           {Object.keys(validationErrors).length > 0 && (
             <ul className="mt-1 list-disc list-inside space-y-0.5">
               {Object.entries(validationErrors).map(([field, msg]) => (
-                <li key={field}>
-                  <span className="font-medium">{field}:</span> {msg}
-                </li>
+                <li key={field}><span className="font-medium">{field}:</span> {msg}</li>
               ))}
             </ul>
           )}
@@ -692,9 +944,7 @@ export default function NewShipmentForm({ locations, branches, surcharges, userB
       )}
 
       <div className="flex items-center justify-between pt-2">
-        <a href="/shipments" className="text-sm text-gray-500 hover:text-gray-700">
-          Cancel
-        </a>
+        <a href="/shipments" className="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
         <button
           type="submit"
           disabled={loading}

@@ -58,7 +58,9 @@ const createSchema = z.object({
   dimensionalWeight: z.number().min(0).optional(),
   chargeableWeight: z.number().min(0).optional(),
   agentId: z.string().optional(),
+  senderId: z.string().optional(),
   shipmentCategory: z.string().optional(),
+  ratePerKg: z.number().positive().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -146,14 +148,15 @@ export async function POST(req: NextRequest) {
     const totalWeight = data.packages.reduce((sum, p) => sum + p.weight, 0);
     const totalPieces = data.packages.length;
 
-    // Calculate shipping total
+    // Calculate shipping total — aggregate avoids loading full rows
     const surchargesTotal =
       data.surchargeIds.length > 0
         ? (
-            await db.surcharge.findMany({
+            await db.surcharge.aggregate({
               where: { id: { in: data.surchargeIds }, isActive: true },
+              _sum: { cost: true },
             })
-          ).reduce((sum, s) => sum + s.cost, 0)
+          )._sum.cost ?? 0
         : 0;
 
     const userMarkup = user.markup ?? 0;
@@ -168,7 +171,7 @@ export async function POST(req: NextRequest) {
       data: {
         trackingNumber,
         shipmentType: data.shipmentType,
-        senderId: user.id,
+        senderId: data.senderId ?? user.id,
         originBranchId: data.originBranchId ?? user.branchId ?? undefined,
         destBranchId: data.destBranchId,
         shipperName: data.shipperName,
@@ -247,6 +250,7 @@ export async function POST(req: NextRequest) {
         marketingTracker: data.marketingTracker,
         dimensionalWeight: data.dimensionalWeight,
         chargeableWeight: data.chargeableWeight,
+        ratePerKg: data.ratePerKg,
         agentId: data.agentId,
         shipmentCategory: data.shipmentCategory,
       },
