@@ -1,6 +1,6 @@
 # KDExpress — Tài liệu dự án cho Claude
 
-File này giúp Claude Code tiếp tục làm việc giữa các phiên. Cập nhật lần cuối: 2026-06-26.
+File này giúp Claude Code tiếp tục làm việc giữa các phiên. Cập nhật lần cuối: 2026-06-26 (lần 3).
 
 ---
 
@@ -32,15 +32,18 @@ src/
     (auth)/login/         Trang đăng nhập
     (dashboard)/          Tất cả trang có xác thực (layout bọc Sidebar)
       dashboard/          Trang tổng quan
-      shipments/          Danh sách + chi tiết + invoice + customs-invoice + nhãn dán
+      shipments/          Danh sách (bulk ops) + chi tiết + invoice + customs-invoice
       manifests/          Manifest list + new + chi tiết + scan pallet
-      customers/          Quản lý người dùng (+ trang chi tiết khách hàng với rate)
+      customers/          Quản lý người dùng (bulk role change) + chi tiết khách hàng
       branches/           Quản lý chi nhánh
-      rates/              Quản lý bảng giá + surcharges
+      rates/              Rate Zones | Customer Rates | Surcharges (3 tab)
       address-book/       Sổ địa chỉ
+    label/
+      [tracking]/         Nhãn dán đơn lẻ (4×6")
+      print/              In nhãn hàng loạt — /label/print?ids=id1,id2,...
   components/
     Sidebar.tsx               Nav sidebar màu xanh lá (bg-green-900)
-    NewShipmentForm.tsx       Form tạo shipment (có tính cước, customer picker)
+    NewShipmentForm.tsx       Form tạo shipment (tính cước, customer picker)
     ManifestForm.tsx          Form tạo manifest
     ManifestDetailClient.tsx  Chi tiết manifest (client, auto-refresh useTransition)
     PalletScanClient.tsx      Scan kiện vào pallet (client, auto-refresh useTransition)
@@ -56,6 +59,10 @@ src/
 prisma/
   schema.prisma           Full DB schema
 ```
+
+**Lưu ý tên field schema (dễ nhầm):**
+- `Pallet.code` — KHÔNG phải `palletNumber`
+- `Manifest.code` — KHÔNG phải `manifestNumber`
 
 ---
 
@@ -187,20 +194,25 @@ Route: `/label/[tracking]` (tối ưu in, khổ 4×6 inch)
 /api/shipments                    GET danh sách, POST tạo mới
 /api/shipments/[id]               GET chi tiết, PATCH cập nhật, DELETE
 /api/shipments/[id]/status        PATCH cập nhật trạng thái
-/api/manifests                    GET danh sách (với tổng hợp), POST tạo mới
+/api/shipments/bulk               DELETE xóa nhiều, PATCH assign sender nhiều
+/api/manifests                    GET danh sách (hỗ trợ ?status=A,B và ?limit=N), POST tạo mới
 /api/manifests/[id]               GET chi tiết, PATCH cập nhật, DELETE
 /api/manifests/[id]/status        PATCH cập nhật trạng thái (cascade)
-/api/manifests/[id]/pallets                        POST tạo pallet
-/api/manifests/[id]/pallets/[palletId]             PATCH seal/unseal, DELETE
-/api/manifests/[id]/pallets/[palletId]/packages    POST scan, DELETE xóa kiện
+/api/manifests/[id]/pallets                             POST tạo pallet
+/api/manifests/[id]/pallets/[palletId]                  PATCH seal/unseal, DELETE
+/api/manifests/[id]/pallets/[palletId]/packages         POST scan, DELETE xóa kiện
+/api/manifests/[id]/pallets/[palletId]/packages/bulk    POST thêm nhiều shipment vào pallet
 /api/rates/calculate              POST tính cước theo zone (hệ thống cũ)
-/api/rates/freight                POST tính cước theo công thức mới (MỚI)
+/api/rates/freight                POST tính cước theo công thức mới
 /api/rates/surcharges             GET danh sách, POST tạo
 /api/rates/surcharges/[id]        PATCH cập nhật, DELETE
-/api/users/search                 GET tìm kiếm user (dùng trong form tạo shipment)
+/api/users/search                 GET tìm kiếm user
 /api/users/[id]/rate              GET/PUT/DELETE rate riêng của user
+/api/users/bulk                   PATCH đổi role hàng loạt
 /api/auth/...                     Login/logout/session
 ```
+
+**Lưu ý GET /api/manifests:** Response format là `{ success, data: { items, total, page, totalPages } }` — khác với format cũ. Trang manifests list dùng Prisma trực tiếp (không gọi API này).
 
 ---
 
@@ -235,3 +247,30 @@ Route: `/label/[tracking]` (tối ưu in, khổ 4×6 inch)
 8. Cập nhật `NewShipmentForm`: customer picker, breakdown cước rõ ràng, hazard auto-surcharge
 9. Trang `/customers/[id]`: thêm section quản lý rate + component `UserRateForm`
 10. Trang `/rates/surcharges`: quản lý surcharges với hazard type
+
+### Session 2026-06-26 (lần 3) — Rates navigation + Bulk operations
+
+**Rates navigation:**
+1. Tạo `RatesNav.tsx` — tab nav dùng chung cho 3 trang rates
+2. Trang `/rates` (Rate Zones), `/rates/customer-rates`, `/rates/surcharges` đều có tab nav
+3. Trang `/rates/customer-rates` (MỚI) — quản lý rate tất cả agent/client tập trung, có search + filter, chỉnh sửa inline
+4. `CustomerRatesClient.tsx` — client component, optimistic state update, không cần router.refresh()
+
+**Bulk operations — Users:**
+1. `CustomersClient.tsx` — client component với checkbox, select-all, bulk action bar
+2. Bulk role change: chọn nhiều user → chọn role → Apply (`PATCH /api/users/bulk`)
+
+**Bulk operations — Shipments:**
+1. `ShipmentsClient.tsx` — client component với checkbox, select-all, 4 bulk actions
+2. **Delete**: modal xác nhận → `DELETE /api/shipments/bulk`
+3. **Assign Customer**: modal search user → `PATCH /api/shipments/bulk` (cập nhật `senderId`)
+4. **Add to Manifest**: modal chọn manifest (PLANNING/LOADING) + pallet (OPEN) → `POST /api/manifests/[id]/pallets/[palletId]/packages/bulk`
+5. **Print Labels**: mở `/label/print?ids=...` trong tab mới
+
+**In nhãn hàng loạt:**
+1. Trang `/label/print?ids=id1,id2,...` (MỚI) — render tất cả labels 4×6" với page-break giữa mỗi nhãn
+2. Nút "Print All" trigger `window.print()`
+
+**Fix lỗi deploy:**
+- `Pallet.palletNumber` không tồn tại → đổi thành `Pallet.code`
+- `Manifest.manifestNumber` không tồn tại → đổi thành `Manifest.code`
